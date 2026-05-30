@@ -1,8 +1,8 @@
 # upi-rpl-laporan-magang
 
-Claude Code plugin for RPL students at UPI Cibiru. Generates logbook, laporan magang, and PKS documents based on your pedoman.
+Plugin Claude Code untuk mahasiswa RPL UPI Cibiru. Membuat logbook, laporan magang, dan PKS secara otomatis berdasarkan pedoman yang berlaku.
 
-## Install
+## Instalasi
 
 **macOS / Linux:**
 ```bash
@@ -14,34 +14,34 @@ curl -fsSL https://raw.githubusercontent.com/dikdns/upi-rpl-laporan-magang/main/
 irm https://raw.githubusercontent.com/dikdns/upi-rpl-laporan-magang/main/install.ps1 | iex
 ```
 
-Restart Claude Code after install.
+Restart Claude Code setelah instalasi.
 
 ## Skills
 
-| Skill | What it does |
-|-------|-------------|
-| `/rpl-magang:init` | One-time setup — parse your pedoman PDF and save config |
-| `/rpl-magang:logbook` | Generate weekly/biweekly logbook (Catatan Harian & Kehadiran) |
-| `/rpl-magang:laporan` | Write laporan magang section by section, compile to DOCX |
-| `/rpl-magang:pks` | Generate PKS (Cooperation Agreement) DOCX |
+| Skill | Fungsi |
+|-------|--------|
+| `/rpl-magang:init` | Setup awal — parsing pedoman PDF dan simpan konfigurasi |
+| `/rpl-magang:logbook` | Buat logbook mingguan/dua mingguan (Catatan Harian & Kehadiran) |
+| `/rpl-magang:laporan` | Tulis laporan magang per bab, kompilasi ke DOCX |
+| `/rpl-magang:pks` | Buat PKS (Perjanjian Kerja Sama) dalam format DOCX |
 
-## Quick start
+## Cara Pakai
 
 ```
-1. /rpl-magang:init              ← run once, point to your pedoman PDF
-2. /rpl-magang:logbook           ← generate logbook each week
-3. /rpl-magang:laporan bab1      ← write Bab I
-4. /rpl-magang:laporan bab2      ← write Bab II
+1. /rpl-magang:init              ← jalankan sekali, arahkan ke PDF pedoman
+2. /rpl-magang:logbook           ← buat logbook setiap minggu
+3. /rpl-magang:laporan bab1      ← tulis Bab I
+4. /rpl-magang:laporan bab2      ← tulis Bab II
    ...
-5. /rpl-magang:laporan compile   ← export full DOCX
-6. /rpl-magang:pks               ← generate PKS
+5. /rpl-magang:laporan compile   ← ekspor DOCX lengkap
+6. /rpl-magang:pks               ← buat PKS
 ```
 
-## Requirements
+## Kebutuhan Sistem
 
 - Python 3.9+
-- Claude Code with superpowers plugin
-- `curl` (macOS/Linux) or PowerShell 5+ (Windows)
+- Claude Code dengan plugin superpowers
+- `curl` (macOS/Linux) atau PowerShell 5+ (Windows)
 
 ## Uninstall
 
@@ -49,8 +49,8 @@ Restart Claude Code after install.
 ./uninstall.sh
 ```
 
-## Notes
+## Catatan
 
-- UPI logo (`assets/upi-logo.png`) is not bundled. Add it manually before distributing.
+- Logo UPI (`assets/upi-logo.png`) tidak disertakan dalam repo. Tambahkan secara manual sebelum distribusi.
+- Konfigurasi tersimpan di `~/.claude/magang-tools/config.json` — jalankan `/rpl-magang:init` ulang jika pedoman berubah.
 - Repo: https://github.com/dikdns/upi-rpl-laporan-magang
-- Config stored at `~/.claude/magang-tools/config.json` — re-run `/rpl-magang:init` if your pedoman changes.

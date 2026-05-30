@@ -3,7 +3,7 @@ set -euo pipefail
 
 # ============================================================
 # rpl-magang plugin installer for macOS/Linux
-# Remote: curl -fsSL https://raw.githubusercontent.com/YOUR_GITHUB_USERNAME/upi-rpl-laporan-magang/main/install.sh | bash
+# Remote: curl -fsSL https://raw.githubusercontent.com/dikdns/upi-rpl-laporan-magang/main/install.sh | bash
 # Local:  ./install.sh
 # ============================================================
 

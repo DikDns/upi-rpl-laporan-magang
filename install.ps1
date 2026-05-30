@@ -1,6 +1,6 @@
 # ============================================================
 # rpl-magang plugin installer for Windows (PowerShell)
-# Remote: irm https://raw.githubusercontent.com/YOUR_GITHUB_USERNAME/upi-rpl-laporan-magang/main/install.ps1 | iex
+# Remote: irm https://raw.githubusercontent.com/dikdns/upi-rpl-laporan-magang/main/install.ps1 | iex
 # Local:  .\install.ps1
 # ============================================================
 
