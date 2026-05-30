@@ -1,0 +1,9 @@
+{
+  "name": "rpl-magang",
+  "description": "Document generation toolkit for RPL students at UPI Cibiru — logbook, laporan magang, and PKS.",
+  "version": "1.0.0",
+  "author": {
+    "name": "UPI RPL Cibiru",
+    "url": "https://github.com/dikdns/upi-rpl-laporan-magang"
+  }
+}
