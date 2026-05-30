@@ -1,5 +1,9 @@
 # upi-rpl-laporan-magang
 
+> **⚠️ Status: Belum diuji / Proof of Concept**
+> Repo ini masih dalam tahap pengembangan awal dan **belum pernah diuji coba**.
+> Gunakan dengan risiko sendiri. Kontribusi dan laporan bug sangat diterima.
+
 Plugin Claude Code untuk mahasiswa RPL UPI Cibiru. Membuat logbook, laporan magang, dan PKS secara otomatis berdasarkan pedoman yang berlaku.
 
 ## Instalasi
