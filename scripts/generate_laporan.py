@@ -180,7 +180,9 @@ def compile_sections(sections_dir: Path, output_path: Path, config: dict) -> Pat
     style = doc.styles["Normal"]
     style.font.name = font_name
     style.font.size = Pt(font_size)
-    style.paragraph_format.line_spacing = spacing * Pt(font_size) * 12 / 12  # approx
+    # line_spacing as a float → WD_LINE_SPACING.MULTIPLE (e.g. 1.5x).
+    # Passing a Length here would switch to EXACTLY mode and overflow.
+    style.paragraph_format.line_spacing = spacing
 
     # Collect sections in order
     all_md = {f.stem: f for f in sections_dir.glob("*.md")}
