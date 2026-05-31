@@ -33,6 +33,20 @@ Before writing each bab, surface this as a REMINDER to the student (never a hard
 When the student's answers have a weak or missing RPL/SE angle, gently prompt with a concrete example for their role (e.g. admin → otomasi laporan & manajemen data sebagai artefak SE; desain grafis → design system, UI/UX, handoff ke developer). Then let them decide — proceed with whatever they choose.
 </rpl-emphasis-rule>
 
+<image-rule>
+Laporan magang sebaiknya punya dokumentasi visual, bukan teks saja — foto aktivitas kerja, meeting tim, deliverable, screenshot fitur, dll. Gambar boleh di bab manapun + lampiran.
+
+Sintaks di file .md (gambar HARUS berdiri sendiri di satu baris):
+```markdown
+![Deskripsi singkat gambar](path/ke/gambar.jpg)
+```
+- Path relatif → relatif ke output-dir (folder section). Absolut juga boleh.
+- Engine `generate_laporan.py` otomatis: embed gambar lebar 14cm (fit halaman, proporsi terjaga), kasih caption ter-nomor "Gambar [bab].[urut]" (mis. Bab III → Gambar 3.1, 3.2; Lampiran → Gambar L.1), center.
+- Kalau file gambar tidak ada → engine tulis placeholder "[Gambar tidak ditemukan: ...]" (tidak crash), nomor caption tetap jalan.
+
+Saat menulis tiap bab (terutama Bab III), TANYA mahasiswa: "Punya foto dokumentasi buat bab ini? (aktivitas/meeting/deliverable/screenshot) — kasih path + deskripsi singkat." Lalu sisipkan `![deskripsi](path)` di posisi yang relevan dalam .md. Reminder, bukan wajib.
+</image-rule>
+
 <steps>
 
 ## Step 1 — Check config and determine mode
@@ -168,6 +182,8 @@ Default sub-sections:
 
 **3.5 List Judul Tugas Akhir** — ask: based on experience, suggest 3–5 potential TA topics:
 → Table: No | Usulan Judul TA | Deskripsi Singkat
+
+**Dokumentasi visual** — apply `<image-rule>`. Ask: "Punya foto dokumentasi kegiatan? (suasana kerja, meeting tim, deliverable, screenshot fitur) — kasih path + deskripsi tiap foto." Insert each as `![deskripsi](path)` on its own line near the relevant sub-section. Skip if none.
 
 Save as `bab3.md`.
 

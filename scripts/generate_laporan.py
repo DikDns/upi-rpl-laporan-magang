@@ -63,9 +63,51 @@ def apply_inline(paragraph, text: str, font_name: str, font_size_pt):
         run.font.size = Pt(font_size_pt)
 
 
-def md_to_doc(doc, md_text: str, font_name: str, font_size: int):
+def md_to_doc(doc, md_text: str, font_name: str, font_size: int,
+              base_dir: Path = None, chapter_label: str = None,
+              fig_counter: dict = None):
     from docx.shared import Pt, Cm
     from docx.enum.text import WD_ALIGN_PARAGRAPH
+
+    if fig_counter is None:
+        fig_counter = {}
+
+    # Usable width on A4 with 4cm/3cm margins ≈ 14cm.
+    IMG_WIDTH = Cm(14)
+
+    def add_image(alt_text: str, img_ref: str):
+        # Resolve path relative to the section's directory.
+        p = Path(img_ref).expanduser()
+        if not p.is_absolute() and base_dir is not None:
+            p = (base_dir / img_ref).resolve()
+        # Figure number scoped to chapter label (e.g. "3" -> Gambar 3.1).
+        key = chapter_label or "_"
+        fig_counter[key] = fig_counter.get(key, 0) + 1
+        n = fig_counter[key]
+        caption = (f"Gambar {chapter_label}.{n}" if chapter_label
+                   else f"Gambar {n}")
+        if alt_text.strip():
+            caption += f" {alt_text.strip()}"
+
+        if not p.exists():
+            warn = doc.add_paragraph()
+            warn.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            r = warn.add_run(f"[Gambar tidak ditemukan: {img_ref}]")
+            r.italic = True
+            r.font.name = font_name
+            r.font.size = Pt(font_size)
+        else:
+            pic_p = doc.add_paragraph()
+            pic_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            run = pic_p.add_run()
+            run.add_picture(str(p), width=IMG_WIDTH)
+
+        cap_p = doc.add_paragraph()
+        cap_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        cr = cap_p.add_run(caption)
+        cr.font.name = font_name
+        cr.font.size = Pt(font_size - 1)
+        cap_p.paragraph_format.space_after = Pt(6)
 
     lines = md_text.splitlines()
     i = 0
@@ -73,6 +115,13 @@ def md_to_doc(doc, md_text: str, font_name: str, font_size: int):
         line = lines[i].rstrip()
 
         if not line.strip():
+            i += 1
+            continue
+
+        # ── Image: ![caption](path) on its own line ──
+        img_m = re.match(r"^!\[([^\]]*)\]\(([^)]+)\)\s*$", line)
+        if img_m:
+            add_image(img_m.group(1), img_m.group(2).strip())
             i += 1
             continue
 
@@ -193,11 +242,26 @@ def compile_sections(sections_dir: Path, output_path: Path, config: dict) -> Pat
     for name, path in sorted(all_md.items()):
         ordered.append((name, path))
 
+    # Figure numbering is shared across the whole document, scoped per
+    # chapter label (bab3 -> "Gambar 3.x", lampiran -> "Gambar L.x").
+    fig_counter = {}
+
+    def chapter_label_for(name: str):
+        m = re.search(r"bab(\d+)", name)
+        if m:
+            return m.group(1)
+        if "lampiran" in name:
+            return "L"
+        return None
+
     for idx, (name, md_file) in enumerate(ordered):
         if idx > 0:
             doc.add_page_break()
         md_content = md_file.read_text(encoding="utf-8")
-        md_to_doc(doc, md_content, font_name, font_size)
+        md_to_doc(doc, md_content, font_name, font_size,
+                  base_dir=sections_dir,
+                  chapter_label=chapter_label_for(name),
+                  fig_counter=fig_counter)
 
     output_path = versioned_path(output_path)
     doc.save(str(output_path))
