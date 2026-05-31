@@ -206,6 +206,132 @@ def md_to_doc(doc, md_text: str, font_name: str, font_size: int,
         i += 1
 
 
+ASSETS_DIR = TOOLS_DIR / "assets"
+
+
+def parse_kv(md_text: str) -> dict:
+    """Parse simple `key: value` lines (cover / lembar-pengesahan data)."""
+    out = {}
+    for line in md_text.splitlines():
+        m = re.match(r"^\s*([A-Za-z_]+)\s*:\s*(.*)$", line)
+        if m:
+            out[m.group(1).strip().lower()] = m.group(2).strip()
+    return out
+
+
+def _centered(doc, text, font_name, size, bold=False, space_after=0):
+    from docx.shared import Pt
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.paragraph_format.space_after = Pt(space_after)
+    p.paragraph_format.line_spacing = 1.0
+    r = p.add_run(text)
+    r.bold = bold
+    r.font.name = font_name
+    r.font.size = Pt(size)
+    return p
+
+
+def _blank(doc, n=1):
+    from docx.shared import Pt
+    for _ in range(n):
+        p = doc.add_paragraph()
+        p.paragraph_format.space_after = Pt(0)
+        p.paragraph_format.line_spacing = 1.0
+
+
+def render_cover(doc, fields: dict, config: dict):
+    """Full-page cover per pedoman (Lampiran Contoh Cover, hal. 13)."""
+    from docx.shared import Pt, Cm
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+
+    fmt       = config.get("formatting", {})
+    font_name = fmt.get("font", "Arial")
+    program   = config.get("program", "Rekayasa Perangkat Lunak")
+    campus    = config.get("campus", "Kampus UPI di Cibiru").upper()
+
+    nama  = fields.get("nama", "Nama Mahasiswa")
+    nim   = fields.get("nim", "NIM")
+    tahun = fields.get("tahun", "Tahun")
+
+    _blank(doc, 1)
+    _centered(doc, "Laporan Pelaksanaan Kegiatan MBKM", font_name, 12, bold=True)
+    _centered(doc, "MBKM Program MSIB / P3NK (Magang Mandiri)", font_name, 12, bold=True)
+    _blank(doc, 2)
+    _centered(doc, "Diajukan sebagai salah satu syarat Kegiatan MBKM", font_name, 10)
+    _centered(doc, f"pada Program Studi {program}", font_name, 10)
+
+    # LOGO UPI — embed asset if present, else placeholder text.
+    _blank(doc, 3)
+    logo = ASSETS_DIR / "upi-logo.png"
+    if logo.exists():
+        p = doc.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p.paragraph_format.line_spacing = 1.0
+        p.add_run().add_picture(str(logo), height=Cm(4))
+    else:
+        _centered(doc, "LOGO UPI", font_name, 12)
+    _blank(doc, 4)
+
+    _centered(doc, "Oleh.", font_name, 12)
+    _centered(doc, nama, font_name, 12, bold=True)
+    _centered(doc, nim, font_name, 12)
+    _blank(doc, 6)
+
+    _centered(doc, campus, font_name, 14, bold=True)
+    _centered(doc, program.upper(), font_name, 14, bold=True)
+    _centered(doc, "UNIVERSITAS PENDIDIKAN INDONESIA", font_name, 14, bold=True)
+    _centered(doc, str(tahun), font_name, 14, bold=True)
+
+
+def render_lembar_pengesahan(doc, fields: dict, config: dict):
+    """Lembar Pengesahan per pedoman (Lampiran Contoh, hal. 14)."""
+    from docx.shared import Pt
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+
+    fmt       = config.get("formatting", {})
+    font_name = fmt.get("font", "Arial")
+    font_size = fmt.get("font_size_body", 11)
+    program   = config.get("program", "Rekayasa Perangkat Lunak")
+
+    dosen   = fields.get("dosen_pembimbing", "")
+    penyelia = fields.get("penyelia", "")
+    kaprodi  = fields.get("kaprodi", "")
+    kaprodi_nip = fields.get("kaprodi_nip", "")
+
+    _blank(doc, 1)
+    _centered(doc, "Laporan Pelaksanaan Kegiatan MBKM", font_name, 14, bold=True)
+    _centered(doc, "MBKM Program MSIB / P3NK (Magang Mandiri)", font_name, 14, bold=True)
+    _blank(doc, 2)
+    _centered(doc, "Lembar Pengesahan", font_name, 12, bold=True)
+    _blank(doc, 2)
+    _centered(doc, "Diajukan sebagai salah satu syarat kegiatan MBKM", font_name, 10)
+    _centered(doc, f"pada Program Studi {program}", font_name, 10)
+    _blank(doc, 3)
+
+    def field_line(label, value):
+        p = doc.add_paragraph()
+        p.paragraph_format.line_spacing = 1.0
+        p.paragraph_format.space_after = Pt(6)
+        r = p.add_run(f"{label:<18}: {value}")
+        r.font.name = font_name
+        r.font.size = Pt(font_size)
+
+    field_line("Dosen Pembimbing", dosen)
+    field_line("Penyelia", penyelia)
+    _blank(doc, 4)
+
+    _centered(doc, "Mengetahui,", font_name, font_size)
+    _centered(doc, f"Ketua Program Studi {program},", font_name, font_size)
+    _blank(doc, 4)
+    _centered(doc, "__________________________", font_name, font_size)
+    nm = kaprodi if kaprodi else "Tandatangan, Nama Jelas & NIP"
+    _centered(doc, nm, font_name, font_size, bold=bool(kaprodi))
+    if kaprodi_nip:
+        _centered(doc, f"NIP. {kaprodi_nip}", font_name, font_size)
+
+
 def compile_sections(sections_dir: Path, output_path: Path, config: dict) -> Path:
     from docx import Document
     from docx.shared import Pt, Cm
@@ -258,10 +384,17 @@ def compile_sections(sections_dir: Path, output_path: Path, config: dict) -> Pat
         if idx > 0:
             doc.add_page_break()
         md_content = md_file.read_text(encoding="utf-8")
-        md_to_doc(doc, md_content, font_name, font_size,
-                  base_dir=sections_dir,
-                  chapter_label=chapter_label_for(name),
-                  fig_counter=fig_counter)
+        # Cover and Lembar Pengesahan are fixed full-page templates with
+        # per-line font sizes — rendered from key:value data, not markdown.
+        if name == "cover":
+            render_cover(doc, parse_kv(md_content), config)
+        elif name == "lembar-pengesahan":
+            render_lembar_pengesahan(doc, parse_kv(md_content), config)
+        else:
+            md_to_doc(doc, md_content, font_name, font_size,
+                      base_dir=sections_dir,
+                      chapter_label=chapter_label_for(name),
+                      fig_counter=fig_counter)
 
     output_path = versioned_path(output_path)
     doc.save(str(output_path))

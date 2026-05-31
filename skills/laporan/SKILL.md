@@ -1,7 +1,7 @@
 ---
 name: laporan
 description: "Write internship report (Laporan MBKM/P3NK) section by section with AI-assisted writing. Compiles all sections to single DOCX."
-argument-hint: "[bab1|bab2|bab3|bab4|cover|kata-pengantar|compile] [--output-dir /path]"
+argument-hint: "[bab1|bab2|bab3|bab4|cover|lembar-pengesahan|kata-pengantar|compile] [--output-dir /path]"
 allowed-tools:
   - Read
   - Write
@@ -57,8 +57,10 @@ test -f ~/.claude/magang-tools/config.json && echo "ok" || echo "missing"
 If missing → "Jalankan /rpl-magang:init dulu." Stop.
 
 Check `$ARGUMENTS` for section name or `compile`:
-- `bab1`, `bab2`, `bab3`, `bab4`, `cover`, `kata-pengantar`, `compile`
-- If none → ask: "Mau kerjain section apa? (bab1/bab2/bab3/bab4/cover/kata-pengantar/compile)"
+- `bab1`, `bab2`, `bab3`, `bab4`, `cover`, `lembar-pengesahan`, `kata-pengantar`, `compile`
+- If none → ask: "Mau kerjain section apa? (bab1/bab2/bab3/bab4/cover/lembar-pengesahan/kata-pengantar/compile)"
+
+When mode is `compile`, before running, check the required front-matter sections from config `document_structure.bagian_awal` (e.g. Halaman Judul → cover, Lembar Pengesahan → lembar-pengesahan). If a `.md` for a required section is missing in the output dir, warn: "⚠️ [Section] belum dibuat — sesuai pedoman ini wajib. Buat dulu? (mis. /rpl-magang:laporan lembar-pengesahan)". Let user proceed or stop.
 
 Ask for output directory if not in args (default: `./laporan-draft/`):
 ```bash
@@ -82,32 +84,39 @@ If mode == `compile`:
 
 ## Step 3 — COVER
 
+Cover follows the pedoman exactly (Lampiran Contoh Cover) — a full one-page layout with fixed font sizes (12/10/12/14pt) and the UPI logo. The engine renders this from key:value data; do NOT write prose markdown here.
+
 Ask:
 - Nama Mahasiswa lengkap
 - NIM
 - Tahun
 
-Generate `cover.md`:
-```markdown
-# Laporan Pelaksanaan Kegiatan MBKM
-## MBKM Program MSIB / P3NK (Magang Mandiri)
-
-Diajukan sebagai salah satu syarat Kegiatan MBKM
-pada Program Studi Rekayasa Perangkat Lunak
-
----
-*[LOGO UPI — sisipkan gambar secara manual di Word]*
----
-
-Oleh:
-**[Nama Mahasiswa]**
-[NIM]
-
-KAMPUS UPI DI CIBIRU
-REKAYASA PERANGKAT LUNAK
-UNIVERSITAS PENDIDIKAN INDONESIA
-[Tahun]
+Generate `cover.md` as key:value data only:
 ```
+nama: [Nama Mahasiswa]
+nim: [NIM]
+tahun: [Tahun]
+```
+The engine handles title, "Diajukan...", logo (from `~/.claude/magang-tools/assets/upi-logo.png` if present, else "LOGO UPI" placeholder), and the KAMPUS/PROGRAM/UNIVERSITAS/Tahun block — all sized per pedoman, full page.
+
+## Step 3b — LEMBAR PENGESAHAN
+
+Required front-matter per pedoman (config `bagian_awal` lists "Lembar Pengesahan"). Fixed template (Lampiran Contoh Lembar Pengesahan) — rendered from key:value data, sizes 14/12/10pt.
+
+Ask:
+- Nama Dosen Pembimbing (+ gelar)
+- Nama Penyelia (dari mitra)
+- Nama Ketua Program Studi RPL (kaprodi)
+- NIP Ketua Program Studi
+
+Generate `lembar-pengesahan.md` as key:value data only:
+```
+dosen_pembimbing: [Nama + gelar]
+penyelia: [Nama penyelia]
+kaprodi: [Nama kaprodi + gelar]
+kaprodi_nip: [NIP]
+```
+The engine renders the title, "Lembar Pengesahan", "Diajukan...", the Dosen Pembimbing/Penyelia lines, "Mengetahui, Ketua Program Studi ...," and the signature block.
 
 ## Step 4 — KATA PENGANTAR
 
