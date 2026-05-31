@@ -14,7 +14,7 @@ $GITHUB_BRANCH  = "main"
 $GITHUB_ARCHIVE = "https://github.com/$GITHUB_USER/$GITHUB_REPO/archive/refs/heads/$GITHUB_BRANCH.zip"
 
 $ClaudeDir      = Join-Path $env:USERPROFILE ".claude"
-$PluginCache    = Join-Path $ClaudeDir "plugins\cache\local\$PLUGIN_NAME\$PLUGIN_VERSION"
+$PluginCache    = Join-Path $ClaudeDir "plugins\cache\$PLUGIN_NAME\$PLUGIN_NAME\$PLUGIN_VERSION"
 $ToolsDir       = Join-Path $ClaudeDir "magang-tools"
 $PluginsJson    = Join-Path $ClaudeDir "plugins\installed_plugins.json"
 
@@ -69,7 +69,7 @@ Log "Python deps installed."
 # ── register plugin ───────────────────────────────────────────
 Log "Registering plugin..."
 $Now       = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.000Z")
-$PluginKey = "$PLUGIN_NAME@local"
+$PluginKey = "$PLUGIN_NAME@$PLUGIN_NAME"
 $Entry     = @{
     scope       = "user"
     installPath = $PluginCache

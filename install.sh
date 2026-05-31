@@ -15,7 +15,7 @@ GITHUB_BRANCH="main"
 GITHUB_ARCHIVE="https://github.com/${GITHUB_USER}/${GITHUB_REPO}/archive/refs/heads/${GITHUB_BRANCH}.tar.gz"
 
 CLAUDE_DIR="${HOME}/.claude"
-PLUGIN_CACHE="${CLAUDE_DIR}/plugins/cache/local/${PLUGIN_NAME}/${PLUGIN_VERSION}"
+PLUGIN_CACHE="${CLAUDE_DIR}/plugins/cache/${PLUGIN_NAME}/${PLUGIN_NAME}/${PLUGIN_VERSION}"
 TOOLS_DIR="${CLAUDE_DIR}/magang-tools"
 INSTALLED_PLUGINS="${CLAUDE_DIR}/plugins/installed_plugins.json"
 
@@ -87,7 +87,7 @@ log "Python deps installed."
 
 # ── register plugin in installed_plugins.json ──────────────
 log "Registering plugin..."
-PLUGIN_KEY="${PLUGIN_NAME}@local"
+PLUGIN_KEY="${PLUGIN_NAME}@${PLUGIN_NAME}"
 NOW=$(date -u +%Y-%m-%dT%H:%M:%S.000Z 2>/dev/null || date -u +%Y-%m-%dT%H:%M:%S)
 
 mkdir -p "$(dirname "$INSTALLED_PLUGINS")"
