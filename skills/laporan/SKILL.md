@@ -1,5 +1,5 @@
 ---
-name: rpl-magang:laporan
+name: laporan
 description: "Write internship report (Laporan MBKM/P3NK) section by section with AI-assisted writing. Compiles all sections to single DOCX."
 argument-hint: "[bab1|bab2|bab3|bab4|cover|kata-pengantar|compile] [--output-dir /path]"
 allowed-tools:

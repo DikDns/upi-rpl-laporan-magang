@@ -1,5 +1,5 @@
 ---
-name: rpl-magang:logbook
+name: logbook
 description: "Generate weekly/biweekly logbook (Catatan Harian & Kehadiran) for MBKM/P3NK — supports single week, batch, and import from existing files"
 argument-hint: "[--week N] [--batch] [--import /path/to/file] [--output-dir /path]"
 allowed-tools:

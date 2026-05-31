@@ -1,5 +1,5 @@
 ---
-name: rpl-magang:init
+name: init
 description: "One-time setup — parse pedoman PDF, review extracted config, and save for use by other rpl-magang skills"
 argument-hint: "[--pdf /path/to/pedoman.pdf]"
 allowed-tools:

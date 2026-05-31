@@ -1,5 +1,5 @@
 ---
-name: rpl-magang:pks
+name: pks
 description: "Generate PKS (Cooperation Agreement / Perjanjian Kerja Sama) DOCX between UPI Cibiru RPL and a partner company"
 argument-hint: "[--company CompanyName] [--output-dir /path]"
 allowed-tools:
