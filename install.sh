@@ -8,7 +8,7 @@ set -euo pipefail
 # ============================================================
 
 PLUGIN_NAME="rpl-magang"
-PLUGIN_VERSION="1.0.0"
+PLUGIN_VERSION="0.1.0"
 GITHUB_USER="dikdns"
 GITHUB_REPO="upi-rpl-laporan-magang"
 GITHUB_BRANCH="main"

@@ -190,8 +190,24 @@ def main():
         "formatting": extract_formatting(full_text),
         "assessment_criteria": extract_assessment(full_text),
         "logbook_template": extract_logbook_template(full_text),
-        "pks_template_path": None
+        "pks_template_path": None,
+        "rpl_emphasis": {
+            "mode": "prompt",
+            "scope": "all_chapters",
+            "guidance": (
+                "Tiap bab harus menonjolkan sisi Rekayasa Perangkat Lunak / "
+                "software engineering dari kegiatan magang — walau peran "
+                "non-coding (admin, desain grafis, QA, ops). Tarik benang ke: "
+                "analisis kebutuhan, desain, implementasi/tooling, pengujian, "
+                "proses, dan kualitas perangkat lunak. Ini reminder untuk "
+                "mahasiswa, bukan aturan kaku — struktur boleh disesuaikan "
+                "asalkan poin ke-RPL-an tetap menonjol."
+            )
+        }
     }
+    # Default sections from pedoman are suggestions; students may adapt
+    # ordering/titles to their internship type (esp. Bab III).
+    config["document_structure"]["sections_flexible"] = True
 
     if args.output:
         out = Path(args.output).expanduser()

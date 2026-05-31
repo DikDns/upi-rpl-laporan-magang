@@ -11,7 +11,7 @@
       "name": "rpl-magang",
       "source": "./",
       "description": "Document generation toolkit for RPL students at UPI Cibiru — logbook, laporan magang, and PKS.",
-      "version": "1.0.0",
+      "version": "0.1.0",
       "category": "productivity"
     }
   ]

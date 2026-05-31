@@ -23,6 +23,16 @@ LAPORAN_SCRIPT  = ~/.claude/magang-tools/scripts/generate_laporan.py
 User may input notes in ANY language (Bahasa Indonesia, English, or mixed). Claude ALWAYS outputs formal Bahasa Indonesia prose. Expand bullet points into full academic paragraphs. Use passive voice where appropriate. Foreign/technical terms in *italic*.
 </ai-writing-rule>
 
+<rpl-emphasis-rule>
+Read `rpl_emphasis` from config. It applies to EVERY chapter (Bab I–IV), not just Bab III.
+
+Before writing each bab, surface this as a REMINDER to the student (never a hard rule, never reject their input):
+
+> 💡 Ingat: tonjolkan sisi Rekayasa Perangkat Lunak / software engineering di bab ini. Walau peran kamu non-coding (admin, desain, QA, ops), tarik benang ke aspek SE — analisis kebutuhan, desain, tooling/otomasi, pengujian, proses, atau kualitas software.
+
+When the student's answers have a weak or missing RPL/SE angle, gently prompt with a concrete example for their role (e.g. admin → otomasi laporan & manajemen data sebagai artefak SE; desain grafis → design system, UI/UX, handoff ke developer). Then let them decide — proceed with whatever they choose.
+</rpl-emphasis-rule>
+
 <steps>
 
 ## Step 1 — Check config and determine mode
@@ -135,6 +145,14 @@ Save as `bab1.md`.
 Save as `bab2.md`.
 
 ## Step 7 — BAB III (Pelaksanaan Kegiatan)
+
+Bab III is the MOST variable chapter — it depends on the student's internship type. The sub-sections below (3.1–3.5) are the pedoman's DEFAULT suggestion (`sections_flexible: true` in config), not a fixed template.
+
+First ask: "Jenis magang / role kamu apa? (mis. software dev, QA, data, desain grafis, admin/ops, dll)". Then:
+- If a coding-heavy role → the default 3.1–3.5 fit well, use them.
+- If a non-coding role → adapt section titles to the actual work, BUT apply `<rpl-emphasis-rule>`: every section must still surface the SE/RPL angle (process, tooling, requirements, quality, automation). Suggest adapted headings and let the student confirm.
+
+Default sub-sections:
 
 **3.1 Rencana Kegiatan / Jobdesk / Deskripsi Project** — ask: assigned projects/tasks, deliverables:
 → Overview paragraph + jobdesk list.

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 PLUGIN_NAME="rpl-magang"
-PLUGIN_VERSION="1.0.0"
+PLUGIN_VERSION="0.1.0"
 CLAUDE_DIR="${HOME}/.claude"
 PLUGIN_CACHE="${CLAUDE_DIR}/plugins/cache/${PLUGIN_NAME}/${PLUGIN_NAME}/${PLUGIN_VERSION}"
 MARKETPLACE_DIR="${CLAUDE_DIR}/plugins/marketplaces/${PLUGIN_NAME}"
