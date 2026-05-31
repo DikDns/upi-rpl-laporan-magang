@@ -242,6 +242,18 @@ def parse_kv(md_text: str) -> dict:
     return out
 
 
+def _gap(doc, n=1):
+    """n empty single-spaced lines (~0.39cm each) for vertical spacing.
+    Explicit spacing is reliable across viewers; Word's vertical-justify
+    (w:vAlign) is ignored by Preview/Quick Look/LibreOffice."""
+    from docx.shared import Pt
+    for _ in range(n):
+        p = doc.add_paragraph()
+        p.paragraph_format.line_spacing = 1.0
+        p.paragraph_format.space_before = Pt(0)
+        p.paragraph_format.space_after = Pt(0)
+
+
 def _block(doc, font_name, lines, align="center"):
     """One paragraph holding several lines (line breaks within), so the
     block stays tight while Word's vertical-justify spreads the BLOCKS
@@ -280,14 +292,19 @@ def render_cover(doc, fields: dict, config: dict):
     nim   = fields.get("nim", "NIM")
     tahun = fields.get("tahun", "Tahun")
 
+    # Gaps tuned to spread 5 blocks across A4 usable height (~23.7cm):
+    # title near top, logo + identitas mid, institusi near bottom.
+    _gap(doc, 2)
     _block(doc, font_name, [
         ("Laporan Pelaksanaan Kegiatan MBKM", 12, True),
         ("MBKM Program MSIB / P3NK (Magang Mandiri)", 12, True),
     ])
+    _gap(doc, 1)
     _block(doc, font_name, [
         ("Diajukan sebagai salah satu syarat Kegiatan MBKM", 10, False),
         (f"pada Program Studi {program}", 10, False),
     ])
+    _gap(doc, 8)
 
     # LOGO UPI — embed asset if present, else placeholder text.
     logo = ASSETS_DIR / "upi-logo.png"
@@ -299,11 +316,13 @@ def render_cover(doc, fields: dict, config: dict):
     else:
         _block(doc, font_name, [("LOGO UPI", 12, False)])
 
+    _gap(doc, 8)
     _block(doc, font_name, [
         ("Oleh.", 12, False),
         (nama, 12, True),
         (nim, 12, False),
     ])
+    _gap(doc, 14)
     _block(doc, font_name, [
         (campus, 14, True),
         (program.upper(), 14, True),
@@ -329,23 +348,29 @@ def render_lembar_pengesahan(doc, fields: dict, config: dict):
     kaprodi  = fields.get("kaprodi", "")
     kaprodi_nip = fields.get("kaprodi_nip", "")
 
+    _gap(doc, 2)
     _block(doc, font_name, [
         ("Laporan Pelaksanaan Kegiatan MBKM", 14, True),
         ("MBKM Program MSIB / P3NK (Magang Mandiri)", 14, True),
     ])
+    _gap(doc, 4)
     _block(doc, font_name, [("Lembar Pengesahan", 12, True)])
+    _gap(doc, 5)
     _block(doc, font_name, [
         ("Diajukan sebagai salah satu syarat kegiatan MBKM", 10, False),
         (f"pada Program Studi {program}", 10, False),
     ])
+    _gap(doc, 8)
     _block(doc, font_name, [
         (f"{'Dosen Pembimbing':<18}: {dosen}", font_size, False),
         (f"{'Penyelia':<18}: {penyelia}", font_size, False),
     ], align="left")
+    _gap(doc, 10)
     _block(doc, font_name, [
         ("Mengetahui,", font_size, False),
         (f"Ketua Program Studi {program},", font_size, False),
     ])
+    _gap(doc, 6)
     sig_lines = [("__________________________", font_size, False),
                  (kaprodi if kaprodi else "Tandatangan, Nama Jelas & NIP",
                   font_size, bool(kaprodi))]
@@ -378,27 +403,15 @@ def compile_sections(sections_dir: Path, output_path: Path, config: dict) -> Pat
     PAGE = {"a4": (21.0, 29.7), "letter": (21.59, 27.94)}
     pw, ph = PAGE.get(str(fmt.get("page_size", "A4")).lower(), (21.0, 29.7))
 
-    from docx.oxml.ns import qn as _qn
-    from docx.oxml import OxmlElement as _OxmlElement
-
-    def setup_section(section):
-        section.page_width    = Cm(pw)
-        section.page_height   = Cm(ph)
-        section.left_margin   = Cm(margins["left"])
-        section.right_margin  = Cm(margins["right"])
-        section.top_margin    = Cm(margins["top"])
-        section.bottom_margin = Cm(margins["bottom"])
-
-    def set_valign(section, val):
-        # w:vAlign — "both" = vertical justify (fill page), "top" = normal.
-        sectPr = section._sectPr
-        el = sectPr.find(_qn("w:vAlign"))
-        if el is None:
-            el = _OxmlElement("w:vAlign")
-            sectPr.append(el)
-        el.set(_qn("w:val"), val)
-
     doc = Document()
+
+    sec = doc.sections[0]
+    sec.page_width    = Cm(pw)
+    sec.page_height   = Cm(ph)
+    sec.left_margin   = Cm(margins["left"])
+    sec.right_margin  = Cm(margins["right"])
+    sec.top_margin    = Cm(margins["top"])
+    sec.bottom_margin = Cm(margins["bottom"])
 
     # Default paragraph style
     style = doc.styles["Normal"]
@@ -429,28 +442,13 @@ def compile_sections(sections_dir: Path, output_path: Path, config: dict) -> Pat
             return "L"
         return None
 
-    from docx.enum.section import WD_SECTION
-
-    FULLPAGE = {"cover", "lembar-pengesahan"}
-
-    prev_fullpage = None
     for idx, (name, md_file) in enumerate(ordered):
-        fullpage = name in FULLPAGE
-        if idx == 0:
-            section = doc.sections[0]
-        elif fullpage or prev_fullpage:
-            # Section break so vertical-justify can differ from neighbours.
-            section = doc.add_section(WD_SECTION.NEW_PAGE)
-        else:
-            section = None
+        if idx > 0:
             doc.add_page_break()
-        if section is not None:
-            setup_section(section)
-            set_valign(section, "both" if fullpage else "top")
-
         md_content = md_file.read_text(encoding="utf-8")
         # Cover and Lembar Pengesahan are fixed full-page templates with
         # per-line font sizes — rendered from key:value data, not markdown.
+        # They distribute their own vertical spacing to fill the A4 page.
         if name == "cover":
             render_cover(doc, parse_kv(md_content), config)
         elif name == "lembar-pengesahan":
@@ -461,7 +459,6 @@ def compile_sections(sections_dir: Path, output_path: Path, config: dict) -> Pat
                       chapter_label=chapter_label_for(name),
                       fig_counter=fig_counter,
                       heading_sizes=heading_sizes)
-        prev_fullpage = fullpage
 
     output_path = versioned_path(output_path)
     doc.save(str(output_path))
