@@ -104,6 +104,12 @@ KOMPONEN PENILAIAN:
   3. ...
 ```
 
+**Sanity-check the extracted structure before showing it** (safety net on top of the extractor):
+- Duplicate section numbers within a bab (e.g. two `3.1`) → keep the one matching the bab's real outline, drop the stray.
+- A section whose chapter digit ≠ its bab (e.g. a `4.1 Substansi` sitting in Bab IV alongside the real `4.1 Kesimpulan`) → drop the off-topic one; the real Bab IV is "Kesimpulan dan Saran".
+- Titles cut mid-word or with stray characters → clean them.
+Flag anything you fix so the student can confirm: "Gw rapihin [X] karena [alasan] — bener?"
+
 Then ask: "Ada yang perlu dikoreksi? Kalau ada, sebutkan field mana dan nilai yang benar. Kalau sudah oke ketik 'lanjut'."
 
 If user provides corrections → apply them to the config dict.

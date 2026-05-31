@@ -39,6 +39,38 @@ def file_hash(path: str) -> str:
 
 # ── extractors ───────────────────────────────────────────────
 
+ROMAN = {"I": 1, "II": 2, "III": 3, "IV": 4, "V": 5, "VI": 6,
+         "VII": 7, "VIII": 8}
+
+
+def _parse_bab_outline(block: str) -> dict:
+    """Parse a clean 'Bab N TITLE / x.y Title' outline block line by line.
+    Sections bind to the most recent bab heading, so cross-section number
+    reuse elsewhere in the document cannot bleed in."""
+    babs = {}
+    current = None
+    bab_re = re.compile(r'^Bab\s+(VIII|VII|VI|IV|V|III|II|I)\b[ \t]*(.*)$')
+    sec_re = re.compile(r'^(\d+)\.(\d+)\s+(.+)$')
+    for raw in block.splitlines():
+        line = raw.strip()
+        bm = bab_re.match(line)
+        if bm:
+            current = f"bab{bm.group(1)}"
+            babs[current] = {"title": bm.group(2).strip().title(),
+                             "sections": []}
+            continue
+        sm = sec_re.match(line)
+        if sm and current:
+            # Only accept sections whose chapter digit matches the current
+            # bab (e.g. 3.x under Bab III) — guards against stray numbering.
+            if ROMAN.get(current[3:]) == int(sm.group(1)):
+                babs[current]["sections"].append(
+                    {"number": f"{sm.group(1)}.{sm.group(2)}",
+                     "title": sm.group(3).strip()}
+                )
+    return babs
+
+
 def extract_structure(full_text: str) -> dict:
     structure = {"bagian_awal": [], "bagian_isi": {}, "bagian_akhir": []}
 
@@ -49,33 +81,20 @@ def extract_structure(full_text: str) -> dict:
         if kw in full_text.upper():
             structure["bagian_awal"].append(kw.title())
 
-    # Chapters: "Bab I", "Bab II", etc.
-    bab_re = re.compile(
-        r'Bab\s+(I{1,4}|IV|VI{0,3}|V)[ \t]+([A-Z][A-Z /&]+)',
-        re.MULTILINE
+    # Bagian isi — parse ONLY the authoritative "Bagian Isi" outline block
+    # (the sistematika penulisan list), bounded by "Bagian Akhir". This is
+    # the clean source of truth; scanning the whole document would pull in
+    # reused x.y numbers from other lists (Petunjuk Teknis, Sistematika).
+    block_m = re.search(
+        r'[Bb]agian\s+Isi.*?(?=[Bb]agian\s+Akhir|\Z)', full_text, re.DOTALL
     )
-    for m in bab_re.finditer(full_text):
-        bab_key = f"bab{m.group(1).strip()}"
-        structure["bagian_isi"][bab_key] = {
-            "title": m.group(2).strip().title(),
-            "sections": []
-        }
+    if block_m:
+        structure["bagian_isi"] = _parse_bab_outline(block_m.group(0))
 
-    # Sub-sections: "1.1 Title"
-    sec_re = re.compile(r'(\d+\.\d+)\s{1,4}([A-Za-z][^\n]{3,100})', re.MULTILINE)
-    for m in sec_re.finditer(full_text):
-        num = m.group(1).strip()
-        title = m.group(2).strip()
-        bab_num = num.split(".")[0]
-        # Map to roman numeral key as found
-        for key in structure["bagian_isi"]:
-            # Simple heuristic: bab I -> 1, II -> 2, etc.
-            roman_map = {"I": 1, "II": 2, "III": 3, "IV": 4, "V": 5, "VI": 6}
-            for roman, arabic in roman_map.items():
-                if key == f"bab{roman}" and str(arabic) == bab_num:
-                    structure["bagian_isi"][key]["sections"].append(
-                        {"number": num, "title": title}
-                    )
+    # Fallback: if the outline block wasn't found or yielded nothing, scan
+    # the whole document (legacy behaviour, may include noise).
+    if not structure["bagian_isi"]:
+        structure["bagian_isi"] = _parse_bab_outline(full_text)
 
     # Bagian akhir
     for kw in ["Daftar Pustaka", "Lampiran"]:
