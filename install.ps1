@@ -13,10 +13,16 @@ $GITHUB_REPO    = "upi-rpl-laporan-magang"
 $GITHUB_BRANCH  = "main"
 $GITHUB_ARCHIVE = "https://github.com/$GITHUB_USER/$GITHUB_REPO/archive/refs/heads/$GITHUB_BRANCH.zip"
 
-$ClaudeDir      = Join-Path $env:USERPROFILE ".claude"
-$PluginCache    = Join-Path $ClaudeDir "plugins\cache\$PLUGIN_NAME\$PLUGIN_NAME\$PLUGIN_VERSION"
-$ToolsDir       = Join-Path $ClaudeDir "magang-tools"
-$PluginsJson    = Join-Path $ClaudeDir "plugins\installed_plugins.json"
+$ClaudeDir         = Join-Path $env:USERPROFILE ".claude"
+$PluginCache       = Join-Path $ClaudeDir "plugins\cache\$PLUGIN_NAME\$PLUGIN_NAME\$PLUGIN_VERSION"
+$MarketplaceDir    = Join-Path $ClaudeDir "plugins\marketplaces\$PLUGIN_NAME"
+$PluginDataDir     = Join-Path $ClaudeDir "plugins\data\$PLUGIN_NAME-$PLUGIN_NAME"
+$ToolsDir          = Join-Path $ClaudeDir "magang-tools"
+$PluginsJson       = Join-Path $ClaudeDir "plugins\installed_plugins.json"
+$KnownMarketplaces = Join-Path $ClaudeDir "plugins\known_marketplaces.json"
+$SettingsJson      = Join-Path $ClaudeDir "settings.json"
+$PluginKey         = "$PLUGIN_NAME@$PLUGIN_NAME"
+$GithubSlug        = "$GITHUB_USER/$GITHUB_REPO"
 
 function Log   { param($msg) Write-Host "[rpl-magang] $msg" -ForegroundColor Green }
 function Warn  { param($msg) Write-Host "[rpl-magang] $msg" -ForegroundColor Yellow }
@@ -50,6 +56,15 @@ Log "Installing plugin files..."
 New-Item -ItemType Directory -Force -Path $PluginCache | Out-Null
 Copy-Item -Path "$SourceDir\*" -Destination $PluginCache -Recurse -Force
 
+# ── install marketplace source (required for plugin discovery) ─
+Log "Registering marketplace..."
+if (Test-Path $MarketplaceDir) { Remove-Item -Recurse -Force $MarketplaceDir }
+New-Item -ItemType Directory -Force -Path $MarketplaceDir | Out-Null
+Copy-Item -Path "$SourceDir\*" -Destination $MarketplaceDir -Recurse -Force
+$mpGit = Join-Path $MarketplaceDir ".git"
+if (Test-Path $mpGit) { Remove-Item -Recurse -Force $mpGit }
+New-Item -ItemType Directory -Force -Path $PluginDataDir | Out-Null
+
 # ── install tools ─────────────────────────────────────────────
 Log "Setting up tools directory..."
 New-Item -ItemType Directory -Force -Path "$ToolsDir\scripts"   | Out-Null
@@ -66,28 +81,63 @@ python -m venv "$ToolsDir\venv"
 & "$ToolsDir\venv\Scripts\pip.exe" install --quiet -r "$SourceDir\requirements.txt"
 Log "Python deps installed."
 
-# ── register plugin ───────────────────────────────────────────
+# ── register plugin across all Claude Code config files ────────
+# Plugin discovery requires FOUR registrations, not just the cache:
+#   1. installed_plugins.json  — the install record
+#   2. known_marketplaces.json — resolves the @marketplace source
+#   3. settings.json enabledPlugins        — gates whether skills load
+#   4. settings.json extraKnownMarketplaces — marketplace allowlist
+# Missing any one means skills silently never appear.
+# Done in Python (required anyway) to keep one source of truth with install.sh.
 Log "Registering plugin..."
-$Now       = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.000Z")
-$PluginKey = "$PLUGIN_NAME@$PLUGIN_NAME"
-$Entry     = @{
-    scope       = "user"
-    installPath = $PluginCache
-    version     = $PLUGIN_VERSION
-    installedAt = $Now
-    lastUpdated = $Now
-}
-
+$Now = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.000Z")
 New-Item -ItemType Directory -Force -Path (Split-Path $PluginsJson) | Out-Null
 
-if (Test-Path $PluginsJson) {
-    $data = Get-Content $PluginsJson -Raw | ConvertFrom-Json
-} else {
-    $data = [PSCustomObject]@{ version = 2; plugins = [PSCustomObject]@{} }
-}
+$env:PLUGIN_NAME        = $PLUGIN_NAME
+$env:PLUGIN_KEY         = $PluginKey
+$env:PLUGIN_VERSION     = $PLUGIN_VERSION
+$env:PLUGIN_CACHE       = $PluginCache
+$env:MARKETPLACE_DIR    = $MarketplaceDir
+$env:GITHUB_SLUG        = $GithubSlug
+$env:INSTALLED_PLUGINS  = $PluginsJson
+$env:KNOWN_MARKETPLACES = $KnownMarketplaces
+$env:SETTINGS_JSON      = $SettingsJson
+$env:NOW                = $Now
 
-$data.plugins | Add-Member -NotePropertyName $PluginKey -NotePropertyValue @($Entry) -Force
-$data | ConvertTo-Json -Depth 10 | Set-Content $PluginsJson
+$pyReg = @'
+import json, os, pathlib
+env = os.environ
+name, key, ver = env["PLUGIN_NAME"], env["PLUGIN_KEY"], env["PLUGIN_VERSION"]
+cache, mp_dir, slug, now = env["PLUGIN_CACHE"], env["MARKETPLACE_DIR"], env["GITHUB_SLUG"], env["NOW"]
+
+def load(path, default):
+    p = pathlib.Path(path)
+    if p.exists():
+        try: return json.loads(p.read_text())
+        except Exception: pass
+    return default
+
+def save(path, data):
+    pathlib.Path(path).write_text(json.dumps(data, indent=2))
+
+ip = load(env["INSTALLED_PLUGINS"], {"version": 2, "plugins": {}})
+ip.setdefault("plugins", {})[key] = [{
+    "scope": "user", "installPath": cache, "version": ver,
+    "installedAt": now, "lastUpdated": now}]
+save(env["INSTALLED_PLUGINS"], ip)
+
+km = load(env["KNOWN_MARKETPLACES"], {})
+km[name] = {"source": {"source": "github", "repo": slug},
+            "installLocation": mp_dir, "lastUpdated": now}
+save(env["KNOWN_MARKETPLACES"], km)
+
+st = load(env["SETTINGS_JSON"], {})
+st.setdefault("enabledPlugins", {})[key] = True
+st.setdefault("extraKnownMarketplaces", {})[name] = {"source": {"source": "github", "repo": slug}}
+save(env["SETTINGS_JSON"], st)
+print("Registered in installed_plugins, known_marketplaces, and settings.json.")
+'@
+$pyReg | python -
 
 # ── done ──────────────────────────────────────────────────────
 Write-Host ""
