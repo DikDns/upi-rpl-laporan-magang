@@ -294,7 +294,6 @@ def render_cover(doc, fields: dict, config: dict):
 
     # Gaps tuned to spread 5 blocks across A4 usable height (~23.7cm):
     # title near top, logo + identitas mid, institusi near bottom.
-    _gap(doc, 2)
     _block(doc, font_name, [
         ("Laporan Pelaksanaan Kegiatan MBKM", 12, True),
         ("MBKM Program MSIB / P3NK (Magang Mandiri)", 12, True),
@@ -322,7 +321,7 @@ def render_cover(doc, fields: dict, config: dict):
         (nama, 12, True),
         (nim, 12, False),
     ])
-    _gap(doc, 14)
+    _gap(doc, 13)
     _block(doc, font_name, [
         (campus, 14, True),
         (program.upper(), 14, True),
@@ -348,7 +347,6 @@ def render_lembar_pengesahan(doc, fields: dict, config: dict):
     kaprodi  = fields.get("kaprodi", "")
     kaprodi_nip = fields.get("kaprodi_nip", "")
 
-    _gap(doc, 2)
     _block(doc, font_name, [
         ("Laporan Pelaksanaan Kegiatan MBKM", 14, True),
         ("MBKM Program MSIB / P3NK (Magang Mandiri)", 14, True),

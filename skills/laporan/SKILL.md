@@ -122,12 +122,21 @@ The engine renders the title, "Lembar Pengesahan", "Diajukan...", the Dosen Pemb
 
 Ask: names of dosen pembimbing, penyelia, and any others to thank.
 
-Generate `kata-pengantar.md` — formal opening letter style. Include:
+Generate `kata-pengantar.md`. Start with the front-matter title as an H1
+so the engine renders it centered + bold like the BAB titles:
+```markdown
+# KATA PENGANTAR
+```
+Then the formal opening-letter body:
 - Puji syukur kepada Allah SWT
 - Tujuan laporan
 - Terima kasih kepada: Kaprodi, Dosen Pembimbing, Penyelia, orang tua, rekan
 - Harapan penulis
 - Tanda tangan block (kota, tanggal, penulis)
+
+> Front-matter section titles (KATA PENGANTAR, DAFTAR ISI, DAFTAR PUSTAKA,
+> LAMPIRAN) always use `# ` (H1 → centered, bold, chapter size), same as
+> BAB titles. Never `##`.
 
 ## Step 5 — BAB I (Pendahuluan)
 
