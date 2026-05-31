@@ -51,7 +51,7 @@ def extract_structure(full_text: str) -> dict:
 
     # Chapters: "Bab I", "Bab II", etc.
     bab_re = re.compile(
-        r'Bab\s+(I{1,4}|IV|VI{0,3}|V)\s+([A-Z][A-Z\s/&]+)',
+        r'Bab\s+(I{1,4}|IV|VI{0,3}|V)[ \t]+([A-Z][A-Z /&]+)',
         re.MULTILINE
     )
     for m in bab_re.finditer(full_text):
@@ -62,7 +62,7 @@ def extract_structure(full_text: str) -> dict:
         }
 
     # Sub-sections: "1.1 Title"
-    sec_re = re.compile(r'(\d+\.\d+)\s{1,4}([A-Za-z][^\n]{3,60})', re.MULTILINE)
+    sec_re = re.compile(r'(\d+\.\d+)\s{1,4}([A-Za-z][^\n]{3,100})', re.MULTILINE)
     for m in sec_re.finditer(full_text):
         num = m.group(1).strip()
         title = m.group(2).strip()
@@ -125,14 +125,21 @@ def extract_formatting(full_text: str) -> dict:
 
 
 def extract_assessment(full_text: str) -> list[str]:
-    # Try to find assessment section and extract numbered items
-    section_m = re.search(
-        r'[Kk]omponen\s+[Pp]enilaian.*?(?=\n{2,}|\Z)', full_text, re.DOTALL
-    )
+    # Find the assessment section, then bound it at the next heading so we
+    # don't bleed into the "Tata Tertib" rules that follow (also numbered).
+    section_m = re.search(r'[Kk]omponen\s+[Pp]enilaian', full_text)
     if section_m:
-        items = re.findall(r'\d+\.\s+([^\n]+)', section_m.group(0))
+        rest = full_text[section_m.end():]
+        stop = re.search(
+            r'\n\s*(Tata\s+Tertib|TATA\s+TERTIB|Bab\s+[IVX]|BAB\s+[IVX]|'
+            r'LAMPIRAN|DAFTAR\s+PUSTAKA)',
+            rest
+        )
+        if stop:
+            rest = rest[:stop.start()]
+        items = [i.strip() for i in re.findall(r'\d+\.\s+([^\n]+)', rest)]
         if items:
-            return [i.strip() for i in items]
+            return items
 
     # Default from known pedoman v6
     return [
