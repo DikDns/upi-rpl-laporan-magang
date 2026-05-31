@@ -3,16 +3,18 @@
   "name": "rpl-magang",
   "description": "Plugin Claude Code untuk mahasiswa RPL UPI Cibiru — generate logbook, laporan magang, dan PKS otomatis.",
   "owner": {
-    "name": "UPI RPL Cibiru",
+    "name": "DikDns",
     "url": "https://github.com/DikDns/upi-rpl-laporan-magang"
   },
   "plugins": [
     {
       "name": "rpl-magang",
       "source": "./",
-      "description": "Document generation toolkit for RPL students at UPI Cibiru — logbook, laporan magang, and PKS.",
-      "version": "0.1.0",
-      "category": "productivity"
+      "description": "Generate logbook, laporan magang (cover, lembar pengesahan, bab, dokumentasi gambar), dan PKS dari template resmi — untuk mahasiswa RPL UPI Cibiru.",
+      "version": "1.0.0-beta.1",
+      "category": "productivity",
+      "license": "MIT",
+      "keywords": ["upi", "rpl", "magang", "mbkm", "p3nk", "laporan", "logbook", "pks", "docx"]
     }
   ]
 }

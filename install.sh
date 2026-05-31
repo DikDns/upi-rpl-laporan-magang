@@ -8,7 +8,7 @@ set -euo pipefail
 # ============================================================
 
 PLUGIN_NAME="rpl-magang"
-PLUGIN_VERSION="0.1.0"
+PLUGIN_VERSION="1.0.0-beta.1"
 GITHUB_USER="dikdns"
 GITHUB_REPO="upi-rpl-laporan-magang"
 GITHUB_BRANCH="main"
@@ -168,6 +168,7 @@ PYEOF
 # ── done ────────────────────────────────────────────────────
 echo ""
 log "✅ rpl-magang v${PLUGIN_VERSION} installed!"
+warn "Public beta — selalu cek hasil DOCX manual. Lapor bug di GitHub issues."
 echo ""
 info "Available skills (restart Claude Code to activate):"
 info "  /rpl-magang:init     — one-time setup (run this first)"

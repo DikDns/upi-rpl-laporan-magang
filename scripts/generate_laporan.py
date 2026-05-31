@@ -1,7 +1,17 @@
 #!/usr/bin/env python3
 """
-Compile laporan section .md files into a single DOCX.
-Usage: python generate_laporan.py --sections-dir ./laporan-draft --output Laporan_MBKM_Name.docx
+Compile laporan section .md files into a single A4 DOCX.
+
+Handles, per UPI/campus convention (sizes/margins/font from config.json):
+  - cover & lembar-pengesahan: full-page templates rendered from key:value
+    data (not markdown), spaced to fill the page
+  - markdown bab sections: campus headings (BAB 14pt center, sub-bab 12pt
+    left, black), lists, pipe tables, **bold**/*italic*, and embedded
+    images via ![caption](path) with auto-numbered "Gambar X.Y" captions
+Sections are ordered by SECTIONS_ORDER, one page break between each.
+
+Usage:
+  python generate_laporan.py --sections-dir ./laporan-draft --output Laporan.docx
 """
 
 import argparse

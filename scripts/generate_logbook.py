@@ -1,7 +1,14 @@
 #!/usr/bin/env python3
 """
-Generate logbook DOCX from JSON data.
-Usage: python generate_logbook.py --data /path/to/data.json --output /path/to/output.docx
+Generate a "Catatan Harian & Kehadiran" logbook DOCX from JSON data,
+following the UPI MBKM/P3NK template (header fields, activity table,
+signature block). Page size A4; font/margins read from config.json.
+
+Input JSON: {nama_mahasiswa, nim, nama_mitra, nama_penyelia, minggu,
+             entries:[{tanggal, uraian_aktivitas}, ...]}
+
+Usage:
+  python generate_logbook.py --data data.json --output Logbook.docx
 """
 
 import argparse

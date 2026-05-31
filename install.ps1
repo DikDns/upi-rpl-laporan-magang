@@ -7,7 +7,7 @@
 $ErrorActionPreference = "Stop"
 
 $PLUGIN_NAME    = "rpl-magang"
-$PLUGIN_VERSION = "0.1.0"
+$PLUGIN_VERSION = "1.0.0-beta.1"
 $GITHUB_USER    = "dikdns"
 $GITHUB_REPO    = "upi-rpl-laporan-magang"
 $GITHUB_BRANCH  = "main"
@@ -142,6 +142,7 @@ $pyReg | python -
 # ── done ──────────────────────────────────────────────────────
 Write-Host ""
 Log "✅ rpl-magang v$PLUGIN_VERSION installed!"
+Warn "Public beta — selalu cek hasil DOCX manual. Lapor bug di GitHub issues."
 Write-Host ""
 Write-Host "[rpl-magang] Available skills (restart Claude Code to activate):" -ForegroundColor Cyan
 Write-Host "  /rpl-magang:init     — one-time setup (run this first)" -ForegroundColor Cyan
