@@ -60,6 +60,11 @@ def generate(data: dict, config: dict, output_path: Path) -> Path:
     font_size = fmt.get("font_size_body", 11)
 
     sec = doc.sections[0]
+    # A4 (Indonesian academic standard); pedoman specifies only margins.
+    _pg = {"a4": (21.0, 29.7), "letter": (21.59, 27.94)}
+    _pw, _ph = _pg.get(str(fmt.get("page_size", "A4")).lower(), (21.0, 29.7))
+    sec.page_width    = Cm(_pw)
+    sec.page_height   = Cm(_ph)
     sec.left_margin   = Cm(margins["left"])
     sec.right_margin  = Cm(margins["right"])
     sec.top_margin    = Cm(margins["top"])

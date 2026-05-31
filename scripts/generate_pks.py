@@ -39,6 +39,8 @@ def build_pks(data: dict, output_path: Path) -> Path:
 
     doc = Document()
     sec = doc.sections[0]
+    sec.page_width    = Cm(21.0)   # A4
+    sec.page_height   = Cm(29.7)
     sec.left_margin   = Cm(3)
     sec.right_margin  = Cm(3)
     sec.top_margin    = Cm(3)

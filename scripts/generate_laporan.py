@@ -242,30 +242,32 @@ def parse_kv(md_text: str) -> dict:
     return out
 
 
-def _centered(doc, text, font_name, size, bold=False, space_after=0):
+def _block(doc, font_name, lines, align="center"):
+    """One paragraph holding several lines (line breaks within), so the
+    block stays tight while Word's vertical-justify spreads the BLOCKS
+    across the page. `lines` = list of (text, size_pt, bold)."""
     from docx.shared import Pt
     from docx.enum.text import WD_ALIGN_PARAGRAPH
     p = doc.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.paragraph_format.space_after = Pt(space_after)
+    p.alignment = (WD_ALIGN_PARAGRAPH.CENTER if align == "center"
+                   else WD_ALIGN_PARAGRAPH.LEFT)
     p.paragraph_format.line_spacing = 1.0
-    r = p.add_run(text)
-    r.bold = bold
-    r.font.name = font_name
-    r.font.size = Pt(size)
+    p.paragraph_format.space_after = Pt(0)
+    for idx, (text, size, bold) in enumerate(lines):
+        r = p.add_run(text)
+        r.bold = bold
+        r.font.name = font_name
+        r.font.size = Pt(size)
+        if idx < len(lines) - 1:
+            r.add_break()
     return p
 
 
-def _blank(doc, n=1):
-    from docx.shared import Pt
-    for _ in range(n):
-        p = doc.add_paragraph()
-        p.paragraph_format.space_after = Pt(0)
-        p.paragraph_format.line_spacing = 1.0
-
-
 def render_cover(doc, fields: dict, config: dict):
-    """Full-page cover per pedoman (Lampiran Contoh Cover, hal. 13)."""
+    """Full-page cover per pedoman (Lampiran Contoh Cover, hal. 13).
+
+    Emits five tight blocks; the section's vertical-justify spreads them
+    from top to bottom so the cover fills the whole page."""
     from docx.shared import Pt, Cm
     from docx.enum.text import WD_ALIGN_PARAGRAPH
 
@@ -278,15 +280,16 @@ def render_cover(doc, fields: dict, config: dict):
     nim   = fields.get("nim", "NIM")
     tahun = fields.get("tahun", "Tahun")
 
-    _blank(doc, 1)
-    _centered(doc, "Laporan Pelaksanaan Kegiatan MBKM", font_name, 12, bold=True)
-    _centered(doc, "MBKM Program MSIB / P3NK (Magang Mandiri)", font_name, 12, bold=True)
-    _blank(doc, 2)
-    _centered(doc, "Diajukan sebagai salah satu syarat Kegiatan MBKM", font_name, 10)
-    _centered(doc, f"pada Program Studi {program}", font_name, 10)
+    _block(doc, font_name, [
+        ("Laporan Pelaksanaan Kegiatan MBKM", 12, True),
+        ("MBKM Program MSIB / P3NK (Magang Mandiri)", 12, True),
+    ])
+    _block(doc, font_name, [
+        ("Diajukan sebagai salah satu syarat Kegiatan MBKM", 10, False),
+        (f"pada Program Studi {program}", 10, False),
+    ])
 
     # LOGO UPI — embed asset if present, else placeholder text.
-    _blank(doc, 3)
     logo = ASSETS_DIR / "upi-logo.png"
     if logo.exists():
         p = doc.add_paragraph()
@@ -294,24 +297,27 @@ def render_cover(doc, fields: dict, config: dict):
         p.paragraph_format.line_spacing = 1.0
         p.add_run().add_picture(str(logo), height=Cm(4))
     else:
-        _centered(doc, "LOGO UPI", font_name, 12)
-    _blank(doc, 4)
+        _block(doc, font_name, [("LOGO UPI", 12, False)])
 
-    _centered(doc, "Oleh.", font_name, 12)
-    _centered(doc, nama, font_name, 12, bold=True)
-    _centered(doc, nim, font_name, 12)
-    _blank(doc, 6)
-
-    _centered(doc, campus, font_name, 14, bold=True)
-    _centered(doc, program.upper(), font_name, 14, bold=True)
-    _centered(doc, "UNIVERSITAS PENDIDIKAN INDONESIA", font_name, 14, bold=True)
-    _centered(doc, str(tahun), font_name, 14, bold=True)
+    _block(doc, font_name, [
+        ("Oleh.", 12, False),
+        (nama, 12, True),
+        (nim, 12, False),
+    ])
+    _block(doc, font_name, [
+        (campus, 14, True),
+        (program.upper(), 14, True),
+        ("UNIVERSITAS PENDIDIKAN INDONESIA", 14, True),
+        (str(tahun), 14, True),
+    ])
 
 
 def render_lembar_pengesahan(doc, fields: dict, config: dict):
-    """Lembar Pengesahan per pedoman (Lampiran Contoh, hal. 14)."""
+    """Lembar Pengesahan per pedoman (Lampiran Contoh, hal. 14).
+
+    Tight blocks + vertical-justify so the signature block reaches the
+    lower part of the page like the pedoman example."""
     from docx.shared import Pt
-    from docx.enum.text import WD_ALIGN_PARAGRAPH
 
     fmt       = config.get("formatting", {})
     font_name = fmt.get("font", "Arial")
@@ -323,36 +329,29 @@ def render_lembar_pengesahan(doc, fields: dict, config: dict):
     kaprodi  = fields.get("kaprodi", "")
     kaprodi_nip = fields.get("kaprodi_nip", "")
 
-    _blank(doc, 1)
-    _centered(doc, "Laporan Pelaksanaan Kegiatan MBKM", font_name, 14, bold=True)
-    _centered(doc, "MBKM Program MSIB / P3NK (Magang Mandiri)", font_name, 14, bold=True)
-    _blank(doc, 2)
-    _centered(doc, "Lembar Pengesahan", font_name, 12, bold=True)
-    _blank(doc, 2)
-    _centered(doc, "Diajukan sebagai salah satu syarat kegiatan MBKM", font_name, 10)
-    _centered(doc, f"pada Program Studi {program}", font_name, 10)
-    _blank(doc, 3)
-
-    def field_line(label, value):
-        p = doc.add_paragraph()
-        p.paragraph_format.line_spacing = 1.0
-        p.paragraph_format.space_after = Pt(6)
-        r = p.add_run(f"{label:<18}: {value}")
-        r.font.name = font_name
-        r.font.size = Pt(font_size)
-
-    field_line("Dosen Pembimbing", dosen)
-    field_line("Penyelia", penyelia)
-    _blank(doc, 4)
-
-    _centered(doc, "Mengetahui,", font_name, font_size)
-    _centered(doc, f"Ketua Program Studi {program},", font_name, font_size)
-    _blank(doc, 4)
-    _centered(doc, "__________________________", font_name, font_size)
-    nm = kaprodi if kaprodi else "Tandatangan, Nama Jelas & NIP"
-    _centered(doc, nm, font_name, font_size, bold=bool(kaprodi))
+    _block(doc, font_name, [
+        ("Laporan Pelaksanaan Kegiatan MBKM", 14, True),
+        ("MBKM Program MSIB / P3NK (Magang Mandiri)", 14, True),
+    ])
+    _block(doc, font_name, [("Lembar Pengesahan", 12, True)])
+    _block(doc, font_name, [
+        ("Diajukan sebagai salah satu syarat kegiatan MBKM", 10, False),
+        (f"pada Program Studi {program}", 10, False),
+    ])
+    _block(doc, font_name, [
+        (f"{'Dosen Pembimbing':<18}: {dosen}", font_size, False),
+        (f"{'Penyelia':<18}: {penyelia}", font_size, False),
+    ], align="left")
+    _block(doc, font_name, [
+        ("Mengetahui,", font_size, False),
+        (f"Ketua Program Studi {program},", font_size, False),
+    ])
+    sig_lines = [("__________________________", font_size, False),
+                 (kaprodi if kaprodi else "Tandatangan, Nama Jelas & NIP",
+                  font_size, bool(kaprodi))]
     if kaprodi_nip:
-        _centered(doc, f"NIP. {kaprodi_nip}", font_name, font_size)
+        sig_lines.append((f"NIP. {kaprodi_nip}", font_size, False))
+    _block(doc, font_name, sig_lines)
 
 
 def compile_sections(sections_dir: Path, output_path: Path, config: dict) -> Path:
@@ -374,13 +373,32 @@ def compile_sections(sections_dir: Path, output_path: Path, config: dict) -> Pat
         4: (font_size, "left"),
     }
 
-    doc = Document()
+    # Page size: pedoman specifies only margins, so default A4 (Indonesian
+    # academic standard); overridable via config formatting.page_size.
+    PAGE = {"a4": (21.0, 29.7), "letter": (21.59, 27.94)}
+    pw, ph = PAGE.get(str(fmt.get("page_size", "A4")).lower(), (21.0, 29.7))
 
-    sec = doc.sections[0]
-    sec.left_margin   = Cm(margins["left"])
-    sec.right_margin  = Cm(margins["right"])
-    sec.top_margin    = Cm(margins["top"])
-    sec.bottom_margin = Cm(margins["bottom"])
+    from docx.oxml.ns import qn as _qn
+    from docx.oxml import OxmlElement as _OxmlElement
+
+    def setup_section(section):
+        section.page_width    = Cm(pw)
+        section.page_height   = Cm(ph)
+        section.left_margin   = Cm(margins["left"])
+        section.right_margin  = Cm(margins["right"])
+        section.top_margin    = Cm(margins["top"])
+        section.bottom_margin = Cm(margins["bottom"])
+
+    def set_valign(section, val):
+        # w:vAlign — "both" = vertical justify (fill page), "top" = normal.
+        sectPr = section._sectPr
+        el = sectPr.find(_qn("w:vAlign"))
+        if el is None:
+            el = _OxmlElement("w:vAlign")
+            sectPr.append(el)
+        el.set(_qn("w:val"), val)
+
+    doc = Document()
 
     # Default paragraph style
     style = doc.styles["Normal"]
@@ -411,9 +429,25 @@ def compile_sections(sections_dir: Path, output_path: Path, config: dict) -> Pat
             return "L"
         return None
 
+    from docx.enum.section import WD_SECTION
+
+    FULLPAGE = {"cover", "lembar-pengesahan"}
+
+    prev_fullpage = None
     for idx, (name, md_file) in enumerate(ordered):
-        if idx > 0:
+        fullpage = name in FULLPAGE
+        if idx == 0:
+            section = doc.sections[0]
+        elif fullpage or prev_fullpage:
+            # Section break so vertical-justify can differ from neighbours.
+            section = doc.add_section(WD_SECTION.NEW_PAGE)
+        else:
+            section = None
             doc.add_page_break()
+        if section is not None:
+            setup_section(section)
+            set_valign(section, "both" if fullpage else "top")
+
         md_content = md_file.read_text(encoding="utf-8")
         # Cover and Lembar Pengesahan are fixed full-page templates with
         # per-line font sizes — rendered from key:value data, not markdown.
@@ -427,6 +461,7 @@ def compile_sections(sections_dir: Path, output_path: Path, config: dict) -> Pat
                       chapter_label=chapter_label_for(name),
                       fig_counter=fig_counter,
                       heading_sizes=heading_sizes)
+        prev_fullpage = fullpage
 
     output_path = versioned_path(output_path)
     doc.save(str(output_path))

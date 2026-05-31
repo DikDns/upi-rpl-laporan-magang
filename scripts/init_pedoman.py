@@ -94,7 +94,8 @@ def extract_formatting(full_text: str) -> dict:
         "line_spacing": 1.5,
         "margins_cm": {"left": 4, "top": 3, "bottom": 3, "right": 3},
         "citation_style": "APA",
-        "paragraph_indent": "1 tab (5 ketukan dari tepi kiri)"
+        "paragraph_indent": "1 tab (5 ketukan dari tepi kiri)",
+        "page_size": "A4"
     }
 
     # Font name
