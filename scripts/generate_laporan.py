@@ -65,12 +65,40 @@ def apply_inline(paragraph, text: str, font_name: str, font_size_pt):
 
 def md_to_doc(doc, md_text: str, font_name: str, font_size: int,
               base_dir: Path = None, chapter_label: str = None,
-              fig_counter: dict = None):
-    from docx.shared import Pt, Cm
+              fig_counter: dict = None, heading_sizes: dict = None):
+    from docx.shared import Pt, Cm, RGBColor
     from docx.enum.text import WD_ALIGN_PARAGRAPH
 
     if fig_counter is None:
         fig_counter = {}
+
+    # Campus heading convention (from reference proposal), NOT Word's blue
+    # built-in heading styles: black, bold, document font, explicit sizes.
+    #   H1 (BAB)  -> chapter size, CENTER
+    #   H2 (x.y)  -> section size, LEFT
+    #   H3 (x.y.z)-> section size, LEFT
+    #   H4        -> body size, LEFT
+    hs = heading_sizes or {
+        1: (14, "center"), 2: (12, "left"),
+        3: (12, "left"),   4: (font_size, "left"),
+    }
+    BLACK = RGBColor(0, 0, 0)
+
+    def add_heading(level, text):
+        size, align = hs.get(level, (font_size, "left"))
+        p = doc.add_paragraph()
+        p.alignment = (WD_ALIGN_PARAGRAPH.CENTER if align == "center"
+                       else WD_ALIGN_PARAGRAPH.LEFT)
+        p.paragraph_format.space_before = Pt(12)
+        p.paragraph_format.space_after = Pt(6)
+        p.paragraph_format.line_spacing = 1.0
+        p.paragraph_format.keep_with_next = True
+        r = p.add_run(text)
+        r.bold = True
+        r.font.name = font_name
+        r.font.size = Pt(size)
+        r.font.color.rgb = BLACK
+        return p
 
     # Usable width on A4 with 4cm/3cm margins ≈ 14cm.
     IMG_WIDTH = Cm(14)
@@ -125,26 +153,21 @@ def md_to_doc(doc, md_text: str, font_name: str, font_size: int,
             i += 1
             continue
 
-        # ── Headings ──
-        if line.startswith("# "):
-            p = doc.add_heading(line[2:].strip(), level=1)
-            p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            for run in p.runs:
-                run.font.name = font_name
+        # ── Headings (longest prefix first) ──
+        if line.startswith("#### "):
+            add_heading(4, line[5:].strip())
             i += 1
             continue
-
-        if line.startswith("## "):
-            p = doc.add_heading(line[3:].strip(), level=2)
-            for run in p.runs:
-                run.font.name = font_name
-            i += 1
-            continue
-
         if line.startswith("### "):
-            p = doc.add_heading(line[4:].strip(), level=3)
-            for run in p.runs:
-                run.font.name = font_name
+            add_heading(3, line[4:].strip())
+            i += 1
+            continue
+        if line.startswith("## "):
+            add_heading(2, line[3:].strip())
+            i += 1
+            continue
+        if line.startswith("# "):
+            add_heading(1, line[2:].strip())
             i += 1
             continue
 
@@ -342,6 +365,14 @@ def compile_sections(sections_dir: Path, output_path: Path, config: dict) -> Pat
     font_name = fmt.get("font", "Arial")
     font_size = fmt.get("font_size_body", 11)
     spacing   = fmt.get("line_spacing", 1.5)
+    h_chapter = fmt.get("font_size_chapter_title", 14)
+    h_section = fmt.get("font_size_section_title", 12)
+    heading_sizes = {
+        1: (h_chapter, "center"),
+        2: (h_section, "left"),
+        3: (h_section, "left"),
+        4: (font_size, "left"),
+    }
 
     doc = Document()
 
@@ -394,7 +425,8 @@ def compile_sections(sections_dir: Path, output_path: Path, config: dict) -> Pat
             md_to_doc(doc, md_content, font_name, font_size,
                       base_dir=sections_dir,
                       chapter_label=chapter_label_for(name),
-                      fig_counter=fig_counter)
+                      fig_counter=fig_counter,
+                      heading_sizes=heading_sizes)
 
     output_path = versioned_path(output_path)
     doc.save(str(output_path))
