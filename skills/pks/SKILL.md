@@ -41,10 +41,13 @@ Config `pks_template_path` (null = bundled official template, the default).
 
 ## Step 2 — Collect partner (PIHAK KEDUA) information
 
+Jika `config.json` punya `student_identity.mitra`, pakai sebagai default nama
+perusahaan (PIHAK KEDUA) — konfirmasi, jangan tanya ulang dari nol.
+
 Ask:
-- Nama perusahaan/instansi lengkap (contoh: PT Fliptech Lentera Inspirasi Pertiwi)
-- Nama penandatangan pihak perusahaan (contoh: LUQMAN SUNGKAR)
-- Jabatan penandatangan (contoh: Kepala Engineering Konsumer PT Fliptech ...)
+- Nama perusahaan/instansi lengkap (mis. PT/CV/Yayasan ...)
+- Nama penandatangan pihak perusahaan (nama lengkap, biasanya HURUF KAPITAL)
+- Jabatan penandatangan (mis. Direktur / Kepala Divisi ...)
 - Alamat lengkap perusahaan
 - Nomor telepon (ketik "-" kalau tidak ada)
 - Fax (ketik "-" kalau tidak ada)
