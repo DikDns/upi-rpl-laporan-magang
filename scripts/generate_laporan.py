@@ -295,6 +295,59 @@ def parse_kv(md_text: str) -> dict:
     return out
 
 
+def scan_has_tables(sections_dir: Path) -> bool:
+    """Return True if any bab .md file in sections_dir contains a markdown table."""
+    for md in sections_dir.glob("bab*.md"):
+        if "|" in md.read_text(encoding="utf-8"):
+            return True
+    return False
+
+
+def scan_has_images(sections_dir: Path) -> bool:
+    """Return True if any bab .md file in sections_dir contains an image reference."""
+    for md in sections_dir.glob("bab*.md"):
+        if re.search(r"!\[", md.read_text(encoding="utf-8")):
+            return True
+    return False
+
+
+def _insert_toc_field(doc, font_name: str, font_size: int, title: str, toc_instruction: str):
+    """Insert a section title (H1 style) and a Word TOC field paragraph."""
+    from docx.shared import Pt
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.oxml.ns import qn
+    from docx.oxml import OxmlElement
+
+    title_p = doc.add_paragraph()
+    title_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    title_p.paragraph_format.space_before = Pt(0)
+    title_p.paragraph_format.space_after = Pt(12)
+    title_p.paragraph_format.line_spacing = 1.0
+    r = title_p.add_run(title)
+    r.bold = True
+    r.font.name = font_name
+    r.font.size = Pt(14)
+
+    toc_p = doc.add_paragraph()
+    toc_p.paragraph_format.space_after = Pt(0)
+
+    run1 = toc_p.add_run()
+    fc1 = OxmlElement("w:fldChar")
+    fc1.set(qn("w:fldCharType"), "begin")
+    run1._r.append(fc1)
+
+    run2 = toc_p.add_run()
+    instr = OxmlElement("w:instrText")
+    instr.set(qn("xml:space"), "preserve")
+    instr.text = f" {toc_instruction} "
+    run2._r.append(instr)
+
+    run3 = toc_p.add_run()
+    fc3 = OxmlElement("w:fldChar")
+    fc3.set(qn("w:fldCharType"), "end")
+    run3._r.append(fc3)
+
+
 def _gap(doc, n=1):
     """n empty single-spaced lines (~0.39cm each) for vertical spacing.
     Explicit spacing is reliable across viewers; Word's vertical-justify
@@ -476,10 +529,16 @@ def compile_sections(sections_dir: Path, output_path: Path, config: dict) -> Pat
     all_md = {f.stem: f for f in sections_dir.glob("*.md")}
     ordered = []
     for name in SECTIONS_ORDER:
-        if name in all_md:
+        if name == "daftar-isi":
+            ordered.append((name, None))   # auto-generated, no .md needed
+        elif name in all_md:
             ordered.append((name, all_md.pop(name)))
     for name, path in sorted(all_md.items()):
         ordered.append((name, path))
+
+    # Scan for conditional daftar sections
+    has_tables = scan_has_tables(sections_dir)
+    has_images = scan_has_images(sections_dir)
 
     # Figure numbering is shared across the whole document, scoped per
     # chapter label (bab3 -> "Gambar 3.x", lampiran -> "Gambar L.x").
@@ -496,7 +555,7 @@ def compile_sections(sections_dir: Path, output_path: Path, config: dict) -> Pat
     for idx, (name, md_file) in enumerate(ordered):
         if idx > 0:
             doc.add_page_break()
-        md_content = md_file.read_text(encoding="utf-8")
+        md_content = md_file.read_text(encoding="utf-8") if md_file else ""
         # Cover and Lembar Pengesahan are fixed full-page templates with
         # per-line font sizes — rendered from key:value data, not markdown.
         # They distribute their own vertical spacing to fill the A4 page.
@@ -504,6 +563,17 @@ def compile_sections(sections_dir: Path, output_path: Path, config: dict) -> Pat
             render_cover(doc, parse_kv(md_content), config)
         elif name == "lembar-pengesahan":
             render_lembar_pengesahan(doc, parse_kv(md_content), config)
+        elif name == "daftar-isi":
+            _insert_toc_field(doc, font_name, font_size, "DAFTAR ISI",
+                              'TOC \\o "1-3" \\h \\z \\u')
+            if has_tables:
+                doc.add_page_break()
+                _insert_toc_field(doc, font_name, font_size, "DAFTAR TABEL",
+                                  'TOC \\h \\z \\c "Tabel"')
+            if has_images:
+                doc.add_page_break()
+                _insert_toc_field(doc, font_name, font_size, "DAFTAR GAMBAR",
+                                  'TOC \\h \\z \\c "Gambar"')
         else:
             md_to_doc(doc, md_content, font_name, font_size,
                       base_dir=sections_dir,
