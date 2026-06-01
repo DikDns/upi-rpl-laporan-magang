@@ -165,6 +165,18 @@ save(env["SETTINGS_JSON"], st)
 print("Registered in installed_plugins, known_marketplaces, and settings.json.")
 PYEOF
 
+# ── sync generated bab skills (if user has run init before) ──────────────
+GENERATED="$HOME/.claude/magang-tools/generated-skills"
+SKILL_CACHE=$(ls -d "$HOME/.claude/plugins/cache/rpl-magang/rpl-magang/"/*/skills 2>/dev/null | sort -V | tail -1)
+
+if [ -d "$GENERATED" ] && [ -n "$SKILL_CACHE" ]; then
+  echo "Syncing generated bab skills to plugin cache..."
+  for skill_dir in "$GENERATED"/laporan-bab-*/; do
+    [ -d "$skill_dir" ] && cp -r "$skill_dir" "$SKILL_CACHE/"
+  done
+  echo "✓ Bab skills synced."
+fi
+
 # ── done ────────────────────────────────────────────────────
 echo ""
 log "✅ rpl-magang v${PLUGIN_VERSION} installed!"
