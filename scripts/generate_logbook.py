@@ -1,14 +1,7 @@
 #!/usr/bin/env python3
 """
-Generate a "Catatan Harian & Kehadiran" logbook DOCX from JSON data,
-following the UPI MBKM/P3NK template (header fields, activity table,
-signature block). Page size A4; font/margins read from config.json.
-
-Input JSON: {nama_mahasiswa, nim, nama_mitra, nama_penyelia, minggu,
-             entries:[{tanggal, uraian_aktivitas}, ...]}
-
-Usage:
-  python generate_logbook.py --data data.json --output Logbook.docx
+Generate logbook DOCX from JSON data.
+Usage: python generate_logbook.py --data /path/to/data.json --output /path/to/output.docx
 """
 
 import argparse
@@ -55,6 +48,31 @@ def set_cell_border(cell):
     tcPr.append(tcBorders)
 
 
+def set_fixed_layout(table, widths):
+    """Force fixed table layout so per-cell widths are honored by Word."""
+    from docx.oxml.ns import qn
+    from docx.oxml import OxmlElement
+
+    tbl = table._tbl
+    tblPr = tbl.tblPr
+    # remove existing layout if any
+    for el in tblPr.findall(qn("w:tblLayout")):
+        tblPr.remove(el)
+    layout = OxmlElement("w:tblLayout")
+    layout.set(qn("w:type"), "fixed")
+    tblPr.append(layout)
+    # explicit grid columns (EMU -> twips)
+    for el in tbl.findall(qn("w:tblGrid")):
+        tbl.remove(el)
+    grid = OxmlElement("w:tblGrid")
+    for w in widths:
+        gc = OxmlElement("w:gridCol")
+        gc.set(qn("w:w"), str(int(w.twips)))
+        grid.append(gc)
+    tbl.insert(list(tbl).index(tblPr) + 1, grid)
+    table.allow_autofit = False
+
+
 def generate(data: dict, config: dict, output_path: Path) -> Path:
     from docx import Document
     from docx.shared import Pt, Cm, RGBColor
@@ -87,15 +105,20 @@ def generate(data: dict, config: dict, output_path: Path) -> Path:
         p.paragraph_format.space_after = Pt(2)
         return p
 
-    def add_field(label, value):
-        p = doc.add_paragraph()
-        p.paragraph_format.space_after = Pt(0)
-        r1 = p.add_run(f"{label:<20}: ")
-        r1.font.name = font_name
-        r1.font.size = Pt(font_size)
-        r2 = p.add_run(value)
-        r2.font.name = font_name
-        r2.font.size = Pt(font_size)
+    def add_identity(fields):
+        """Borderless 3-col table (label | : | value) so colons align."""
+        wlab, wcol, wval = Cm(4.2), Cm(0.4), Cm(9.4)
+        t = doc.add_table(rows=len(fields), cols=3)
+        set_fixed_layout(t, [wlab, wcol, wval])
+        for i, (label, value) in enumerate(fields):
+            cells = t.rows[i].cells
+            for cell, w, txt in ((cells[0], wlab, label), (cells[1], wcol, ":"), (cells[2], wval, value)):
+                cell.width = w
+                p = cell.paragraphs[0]
+                p.paragraph_format.space_after = Pt(0)
+                run = p.add_run(txt)
+                run.font.name = font_name
+                run.font.size = Pt(font_size)
 
     # ── header ──
     tmpl = config.get("logbook_template", {})
@@ -104,76 +127,149 @@ def generate(data: dict, config: dict, output_path: Path) -> Path:
         "KEGIATAN MBKM KEGIATAN PROGRAM MSIB / P3NK (MAGANG MANDIRI) PADA MITRA"))
     doc.add_paragraph()
 
-    add_field("Nama Mahasiswa", data.get("nama_mahasiswa", ""))
-    add_field("NIM",            data.get("nim", ""))
-    add_field("Nama Mitra",     data.get("nama_mitra", ""))
-    add_field("Nama Penyelia",  data.get("nama_penyelia", ""))
+    add_identity([
+        ("Nama Mahasiswa", data.get("nama_mahasiswa", "")),
+        ("NIM",            data.get("nim", "")),
+        ("Nama Mitra",     data.get("nama_mitra", "")),
+        ("Nama Penyelia",  data.get("nama_penyelia", "")),
+    ])
     doc.add_paragraph()
 
     # ── table ──
-    entries = data.get("entries", [])
     cols = tmpl.get("table_columns", ["No.", "Tanggal", "Uraian Aktivitas", "Paraf Penyelia"])
-    widths = [Cm(1.2), Cm(3.5), Cm(9.5), Cm(2.8)]
+    # Sum must fit printable width (A4 21cm - left 4 - right 3 = 14cm).
+    widths = [Cm(0.9), Cm(3.3), Cm(7.8), Cm(2.0)]
+    sig_roles = tmpl.get("signature_roles", ["Peserta", "Penyelia"])
 
-    table = doc.add_table(rows=1 + len(entries), cols=len(cols))
-    table.style = "Table Grid"
+    import re as _re
 
-    # Header row
-    for i, (col, w) in enumerate(zip(cols, widths)):
-        cell = table.rows[0].cells[i]
-        cell.width = w
-        set_cell_border(cell)
-        p = cell.paragraphs[0]
-        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        run = p.add_run(col)
-        run.bold = True
-        run.font.name = font_name
-        run.font.size = Pt(font_size)
+    def _add_md_runs(p, text):
+        """Add runs to paragraph: *...* -> italic, `...` -> monospace code."""
+        for part in _re.split(r"(\*[^*]+\*|`[^`]+`)", str(text)):
+            if not part:
+                continue
+            if len(part) >= 2 and part.startswith("*") and part.endswith("*"):
+                run = p.add_run(part[1:-1])
+                run.italic = True
+                run.font.name = font_name
+                run.font.size = Pt(font_size)
+            elif len(part) >= 2 and part.startswith("`") and part.endswith("`"):
+                run = p.add_run(part[1:-1])
+                run.font.name = "Courier New"
+                run.font.size = Pt(font_size - 1)
+            else:
+                run = p.add_run(part)
+                run.font.name = font_name
+                run.font.size = Pt(font_size)
 
-    # Data rows
-    for idx, entry in enumerate(entries):
-        row = table.rows[idx + 1]
-        values = [
-            str(idx + 1),
-            entry.get("tanggal", ""),
-            entry.get("uraian_aktivitas", ""),
-            ""
-        ]
-        for j, (val, w) in enumerate(zip(values, widths)):
-            cell = row.cells[j]
+    def render_uraian(cell, value):
+        """Render activity cell. List value -> bullet paragraphs; str -> single paragraph.
+        Supports *...* markdown italics for technical/foreign terms."""
+        if isinstance(value, list):
+            for k, item in enumerate(value):
+                p = cell.paragraphs[0] if k == 0 else cell.add_paragraph()
+                p.paragraph_format.space_after = Pt(0)
+                lead = p.add_run("• ")
+                lead.font.name = font_name
+                lead.font.size = Pt(font_size)
+                _add_md_runs(p, item)
+        else:
+            p = cell.paragraphs[0]
+            _add_md_runs(p, value)
+
+    def add_table_and_entries(entries):
+        table = doc.add_table(rows=1 + len(entries), cols=len(cols))
+        table.style = "Table Grid"
+        set_fixed_layout(table, widths)
+        # Header row
+        for i, (col, w) in enumerate(zip(cols, widths)):
+            cell = table.rows[0].cells[i]
             cell.width = w
             set_cell_border(cell)
             p = cell.paragraphs[0]
-            if j == 0:
-                p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            run = p.add_run(val)
+            p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            run = p.add_run(col)
+            run.bold = True
             run.font.name = font_name
             run.font.size = Pt(font_size)
+        # Data rows
+        for idx, entry in enumerate(entries):
+            row = table.rows[idx + 1]
+            no_cell = row.cells[0]
+            no_cell.width = widths[0]
+            set_cell_border(no_cell)
+            pn = no_cell.paragraphs[0]
+            pn.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            rn = pn.add_run(str(idx + 1))
+            rn.font.name = font_name
+            rn.font.size = Pt(font_size)
 
-    doc.add_paragraph()
-    doc.add_paragraph()
+            tgl_cell = row.cells[1]
+            tgl_cell.width = widths[1]
+            set_cell_border(tgl_cell)
+            pt = tgl_cell.paragraphs[0]
+            rt = pt.add_run(entry.get("tanggal", ""))
+            rt.font.name = font_name
+            rt.font.size = Pt(font_size)
 
-    # ── signature block ──
-    sig_roles = tmpl.get("signature_roles", ["Peserta", "Penyelia"])
-    sig_names = [data.get("nama_mahasiswa", ""), data.get("nama_penyelia", "")]
-    sig_table = doc.add_table(rows=6, cols=2)
-    sig_rows = [
-        [f"{sig_roles[0]},", f"{sig_roles[1]},"],
-        ["", ""],
-        ["", ""],
-        ["", ""],
-        ["", ""],
-        sig_names,
-    ]
-    for i, row_data in enumerate(sig_rows):
-        for j, text in enumerate(row_data):
-            cell = sig_table.cell(i, j)
-            p = cell.paragraphs[0]
-            run = p.add_run(text)
-            run.font.name = font_name
-            run.font.size = Pt(font_size)
-            if i == 5:
-                run.bold = True
+            ur_cell = row.cells[2]
+            ur_cell.width = widths[2]
+            set_cell_border(ur_cell)
+            render_uraian(ur_cell, entry.get("items") or entry.get("uraian_aktivitas", ""))
+
+            pf_cell = row.cells[3]
+            pf_cell.width = widths[3]
+            set_cell_border(pf_cell)
+
+    def add_signature():
+        from docx.enum.table import WD_ALIGN_VERTICAL
+        from docx.oxml.ns import qn
+        from docx.oxml import OxmlElement
+
+        sig_names = [data.get("nama_mahasiswa", ""), data.get("nama_penyelia", "")]
+        doc.add_paragraph()
+        sig_table = doc.add_table(rows=3, cols=2)
+        sig_rows = [
+            [f"{sig_roles[0]},", f"{sig_roles[1]},"],   # role labels
+            ["", ""],                                    # one tall row for signature image
+            sig_names,                                   # names (bold)
+        ]
+        for i, row_data in enumerate(sig_rows):
+            for j, text in enumerate(row_data):
+                cell = sig_table.cell(i, j)
+                p = cell.paragraphs[0]
+                run = p.add_run(text)
+                run.font.name = font_name
+                run.font.size = Pt(font_size)
+                if i == 2:
+                    run.bold = True
+        # Make the middle row tall so a signature image fits without deleting rows.
+        tr = sig_table.rows[1]._tr
+        trPr = tr.get_or_add_trPr()
+        trH = OxmlElement("w:trHeight")
+        trH.set(qn("w:val"), "1700")   # ~3.0cm in twips
+        trH.set(qn("w:hRule"), "atLeast")
+        trPr.append(trH)
+        sig_table.rows[1].cells[0].vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+
+    weeks = data.get("weeks")
+    if weeks:
+        from docx.enum.text import WD_BREAK
+        for wi, wk in enumerate(weeks):
+            h = doc.add_paragraph()
+            hr = h.add_run(f"{wk.get('label', '')} ({wk.get('periode', '')})")
+            hr.bold = True
+            hr.font.name = font_name
+            hr.font.size = Pt(font_size)
+            add_table_and_entries(wk.get("entries", []))
+            add_signature()
+            if wi < len(weeks) - 1:
+                doc.add_paragraph().add_run().add_break(WD_BREAK.PAGE)
+    else:
+        add_table_and_entries(data.get("entries", []))
+        doc.add_paragraph()
+        doc.add_paragraph()
+        add_signature()
 
     output_path = versioned_path(output_path)
     doc.save(str(output_path))

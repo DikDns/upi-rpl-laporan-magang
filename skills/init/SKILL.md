@@ -122,6 +122,23 @@ Ask: "Punya template PKS DOCX sendiri? Kalau ada, berikan path-nya. Kalau tidak,
 If path provided → validate it exists → set `pks_template_path` in config.
 If skipped → `pks_template_path` remains null (use built-in).
 
+## Step 5b — Identitas mahasiswa (opsional)
+
+Ask (boleh skip dengan Enter): "Mau simpan identitas biar nggak ditanya ulang
+tiap skill? (boleh skip)"
+- Nama Mahasiswa (lengkap)
+- NIM
+- Nama Mitra (perusahaan/instansi)
+- Nama Penyelia (supervisor di tempat magang)
+
+Bila diisi, simpan ke config sebagai `student_identity`:
+```json
+{ "student_identity": { "nama": "...", "nim": "...", "mitra": "...", "penyelia": "..." } }
+```
+Skill `laporan` / `logbook` / `pks` membaca ini dan hanya minta konfirmasi,
+tidak tanya ulang. Bila skip, `student_identity` tidak ditulis (skill akan
+menanyakannya saat dibutuhkan, lalu menyimpannya balik).
+
 ## Step 6 — Save config
 
 Write config to `~/.claude/magang-tools/config.json`.

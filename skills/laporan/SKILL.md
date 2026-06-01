@@ -86,9 +86,10 @@ If mode == `compile`:
 
 Cover follows the pedoman exactly (Lampiran Contoh Cover) — a full one-page layout with fixed font sizes (12/10/12/14pt) and the UPI logo. The engine renders this from key:value data; do NOT write prose markdown here.
 
-Ask:
-- Nama Mahasiswa lengkap
-- NIM
+First read `student_identity` from `config.json`; if present, prefill Nama/NIM
+(only confirm, don't re-ask). Then ask for what's missing:
+- Nama Mahasiswa lengkap (kalau belum ada di config)
+- NIM (kalau belum ada di config)
 - Tahun
 
 Generate `cover.md` as key:value data only:

@@ -17,7 +17,26 @@ Generate a Catatan Harian & Kehadiran Peserta logbook following the UPI template
 CONFIG_PATH    = ~/.claude/magang-tools/config.json
 PYTHON         = ~/.claude/magang-tools/venv/bin/python
 LOGBOOK_SCRIPT = ~/.claude/magang-tools/scripts/generate_logbook.py
+LINKS_SCRIPT   = ~/.claude/magang-tools/scripts/extract_pdf_links.py
 </constants>
+
+<data-format>
+`generate_logbook.py` menerima dua bentuk JSON (backward-compatible):
+
+1. **Flat** (lama): `{..., entries:[{tanggal, uraian_aktivitas}]}` → satu tabel,
+   satu baris per hari, satu blok tanda tangan di akhir.
+2. **Per-pekan**: `{..., weeks:[{label, periode, entries:[{tanggal, items:[...]}]}]}`
+   → satu tabel + satu tanda tangan per pekan, ganti halaman antar pekan.
+
+Catatan render di dalam sel Uraian:
+- `items` (list) → tiap item jadi **bullet point** (untuk hari dengan banyak
+  aktivitas). String `uraian_aktivitas` tetap dipakai bila ada.
+- `*teks*` → *italic* (istilah teknis/asing), `` `teks` `` → monospace code
+  (perintah/berkas). Nama brand/ID (ClickUp IR-xxxx, dsb) biarkan biasa.
+
+Pilihan bentuk ikut permintaan mahasiswa: bisa "1 baris = 1 hari" atau
+"1 baris = 1 pekan dengan rentang tanggal + bullet". Tanyakan bila ambigu.
+</data-format>
 
 <steps>
 
@@ -56,6 +75,26 @@ Analyze its content and extract:
 - Uraian aktivitas per entry
 - Nama penyelia (if found)
 
+**Jika file PDF (mis. export ClickUp/Notion/Docs):** teksnya bisa berupa
+gambar — baca per halaman (Read dengan `pages`) untuk isi, lalu **ekstrak
+hyperlink** yang tersemat:
+```bash
+~/.claude/magang-tools/venv/bin/python ~/.claude/magang-tools/scripts/extract_pdf_links.py \
+    --pdf "[path.pdf]"
+```
+
+**Enrich (opsional, kalau ada link + tooling):** untuk tiap link, ambil detail
+agar uraian akurat:
+- `clickup` → ClickUp MCP `clickup_get_task` (custom id seperti IR-9633) untuk
+  judul/ID/status task atau bug.
+- `gitlab` → `glab mr view <iid> -R <project-path>` untuk judul/state Merge
+  Request.
+- `google` → catat sebagai dokumen pendukung (judul saja).
+
+Gabungkan hasilnya ke uraian (judul MR, ID bug, status) sehingga aktivitas
+harian deskriptif dan terverifikasi. Lewati enrich bila MCP/`glab` tak tersedia
+atau user tak mengizinkan akses.
+
 Show extracted entries to user for review: "Ini yang berhasil gw parse dari file kamu:"
 Ask if there's anything to correct or add.
 
@@ -67,14 +106,21 @@ Activities will be collected per week in Step 4.
 
 ## Step 3 — Collect student identity
 
-Check if config already has student identity cached. If yes, confirm:
+Read `student_identity` from `config.json`. If present, confirm:
 "Pakai data ini? Nama: [X], NIM: [Y], Mitra: [Z], Penyelia: [W]"
 
-If no or different → ask:
+If absent or different → ask:
 - Nama Mahasiswa (lengkap)
 - NIM
-- Nama Mitra (default: PT Fliptech Lentera Inspirasi Pertiwi)
+- Nama Mitra (nama lengkap perusahaan/instansi)
 - Nama Penyelia (nama supervisor di perusahaan)
+
+After collecting (or correcting), **persist back** to
+`config.json` under `student_identity` so `laporan` / `logbook` / `pks` reuse
+it without re-asking:
+```json
+{ "student_identity": { "nama": "...", "nim": "...", "mitra": "...", "penyelia": "..." } }
+```
 
 ## Step 4 — Collect daily activities
 

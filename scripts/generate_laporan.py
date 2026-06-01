@@ -58,19 +58,54 @@ def versioned_path(base: Path) -> Path:
 def apply_inline(paragraph, text: str, font_name: str, font_size_pt):
     from docx.shared import Pt
 
-    # Split on **bold** and *italic*
-    parts = re.split(r"(\*\*[^*]+\*\*|\*[^*]+\*)", text)
+    # Split on **bold**, *italic*, and `code`
+    parts = re.split(r"(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)", text)
     for part in parts:
+        if not part:
+            continue
         if part.startswith("**") and part.endswith("**"):
             run = paragraph.add_run(part[2:-2])
             run.bold = True
+            run.font.name = font_name
+            run.font.size = Pt(font_size_pt)
         elif part.startswith("*") and part.endswith("*"):
             run = paragraph.add_run(part[1:-1])
             run.italic = True
+            run.font.name = font_name
+            run.font.size = Pt(font_size_pt)
+        elif len(part) >= 2 and part.startswith("`") and part.endswith("`"):
+            run = paragraph.add_run(part[1:-1])
+            run.font.name = "Courier New"
+            run.font.size = Pt(font_size_pt - 1)
         else:
             run = paragraph.add_run(part)
-        run.font.name = font_name
-        run.font.size = Pt(font_size_pt)
+            run.font.name = font_name
+            run.font.size = Pt(font_size_pt)
+
+
+def set_fixed_layout(table, widths):
+    """Force fixed table layout so per-cell widths are honored by Word.
+    `widths` is a list of docx Length (e.g. Cm); their sum should fit the
+    printable area or Word will re-distribute regardless of fixed layout."""
+    from docx.oxml.ns import qn
+    from docx.oxml import OxmlElement
+
+    tbl = table._tbl
+    tblPr = tbl.tblPr
+    for el in tblPr.findall(qn("w:tblLayout")):
+        tblPr.remove(el)
+    layout = OxmlElement("w:tblLayout")
+    layout.set(qn("w:type"), "fixed")
+    tblPr.append(layout)
+    for el in tbl.findall(qn("w:tblGrid")):
+        tbl.remove(el)
+    grid = OxmlElement("w:tblGrid")
+    for w in widths:
+        gc = OxmlElement("w:gridCol")
+        gc.set(qn("w:w"), str(int(w.twips)))
+        grid.append(gc)
+    tbl.insert(list(tbl).index(tblPr) + 1, grid)
+    table.allow_autofit = False
 
 
 def md_to_doc(doc, md_text: str, font_name: str, font_size: int,
@@ -211,18 +246,26 @@ def md_to_doc(doc, md_text: str, font_name: str, font_size: int,
                     cells = [c.strip() for c in row.strip().strip("|").split("|")]
                     parsed.append(cells)
                 if parsed:
+                    from docx.shared import Emu
                     max_cols = max(len(r) for r in parsed)
                     tbl = doc.add_table(rows=len(parsed), cols=max_cols)
                     tbl.style = "Table Grid"
+                    # Fit columns within printable width so Word does not
+                    # re-distribute / overflow the page (equal columns).
+                    sec0 = doc.sections[0]
+                    usable = sec0.page_width - sec0.left_margin - sec0.right_margin
+                    col_w = Emu(int(usable) // max_cols)
+                    set_fixed_layout(tbl, [col_w] * max_cols)
                     for ri, row in enumerate(parsed):
                         for ci, cell_text in enumerate(row):
                             if ci < max_cols:
-                                p = tbl.cell(ri, ci).paragraphs[0]
-                                run = p.add_run(cell_text)
-                                run.font.name = font_name
-                                run.font.size = Pt(font_size)
+                                cell = tbl.cell(ri, ci)
+                                cell.width = col_w
+                                p = cell.paragraphs[0]
+                                apply_inline(p, cell_text, font_name, font_size)
                                 if ri == 0:
-                                    run.bold = True
+                                    for r in p.runs:
+                                        r.bold = True
             continue
 
         # ── Horizontal rule ──
