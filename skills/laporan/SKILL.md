@@ -56,9 +56,12 @@ test -f ~/.claude/magang-tools/config.json && echo "ok" || echo "missing"
 ```
 If missing → "Jalankan /rpl-magang:init dulu." Stop.
 
+Read `config.document_structure.bagian_isi` to get the bab list (keys like `babI`, `babII`, ... → map to `bab1`, `bab2`, ...).
+
 Check `$ARGUMENTS` for section name or `compile`:
-- `bab1`, `bab2`, `bab3`, `bab4`, `cover`, `lembar-pengesahan`, `kata-pengantar`, `compile`
-- If none → ask: "Mau kerjain section apa? (bab1/bab2/bab3/bab4/cover/lembar-pengesahan/kata-pengantar/compile)"
+- valid bab args: `bab1` through `bab[N]` based on config `bagian_isi` keys
+- other valid args: `cover`, `lembar-pengesahan`, `kata-pengantar`, `compile`
+- If none → ask: "Mau kerjain section apa?" and list available babs from config + cover/lembar-pengesahan/kata-pengantar/compile
 
 When mode is `compile`, before running, check the required front-matter sections from config `document_structure.bagian_awal` (e.g. Halaman Judul → cover, Lembar Pengesahan → lembar-pengesahan). If a `.md` for a required section is missing in the output dir, warn: "⚠️ [Section] belum dibuat — sesuai pedoman ini wajib. Buat dulu? (mis. /rpl-magang:laporan lembar-pengesahan)". Let user proceed or stop.
 
@@ -144,84 +147,57 @@ Then the formal opening-letter body:
 > LAMPIRAN) always use `# ` (H1 → centered, bold, chapter size), same as
 > BAB titles. Never `##`.
 
-## Step 5 — BAB I (Pendahuluan)
+## Step 5 — BAB content (config-driven)
 
-Ask for each sub-section. User may answer in any language — Claude expands to full paragraphs.
+For `bab1`, `bab2`, `bab3`, `bab4` (and any additional babs in config):
 
-**1.1 Latar Belakang** — ask:
-- Fenomena/masalah di dunia RPL yang memotivasi magang ini?
-- Mengapa perusahaan ini relevan?
-- Apa yang ingin dipelajari?
-→ Write 3–4 paragraphs. End with: "...sehingga mendapatkan justifikasi alasan untuk berkegiatan MBKM Program MSIB / P3NK di [perusahaan]."
+**Load bab structure from config:**
+Read `config.document_structure.bagian_isi`. Map argument to key:
+`bab1 → babI`, `bab2 → babII`, `bab3 → babIII`, `bab4 → babIV`
 
-**1.2 Manfaat & Tujuan** — ask what benefits and goals:
-→ Write as numbered list (Manfaat, then Tujuan).
+Get `title` (bab heading) and `sections[]` from that key.
 
-**1.3 Waktu dan Tempat Pelaksanaan** — ask start/end dates, company address, division:
-→ Write as paragraph + table with: Waktu, Tempat, Divisi.
+**Write chapter heading in .md:**
+```markdown
+# [BAB TITLE from config, uppercase]
+```
 
-**1.4 Ruang Lingkup** — ask what was in scope / out of scope:
-→ Write as paragraph + bullet list.
+**For each section in `sections[]` (config order):**
 
-Save as `bab1.md`.
+Write sub-section heading then ask user for content:
+```markdown
+## [section.number] [section.title]
+```
 
-## Step 6 — BAB II (Profil Institusi Mitra)
+**Writing hints by section title keywords:**
 
-**2.1 Gambaran Umum** — ask: history, vision/mission, org structure, company scale:
-→ 2–3 paragraphs.
+| Keyword(s) in title | What to ask | Output format |
+|---------------------|-------------|---------------|
+| Latar Belakang | fenomena/masalah RPL yang memotivasi, relevansi perusahaan, tujuan belajar | 3–4 paragraphs; end: "...mendapat justifikasi untuk berkegiatan MBKM di [perusahaan]." |
+| Manfaat, Tujuan | manfaat dan tujuan magang | numbered list: Manfaat 1.dst, Tujuan 1.dst |
+| Waktu dan Tempat | tanggal mulai/akhir, alamat, divisi | paragraph + table: Waktu \| Tempat \| Divisi |
+| Ruang Lingkup | cakupan dan batasan kegiatan | paragraph + bullet list |
+| Gambaran Umum | sejarah, visi/misi, struktur org, skala | 2–3 paragraphs |
+| Bidang Kerja, Usaha, Layanan | produk/layanan perusahaan | 1–2 paragraphs + list produk/layanan |
+| Peran Mahasiswa | judul role, tim, tanggung jawab | paragraph + numbered list tanggung jawab |
+| Jadwal | rencana aktivitas per bulan | table: No \| Kegiatan \| Bulan 1 \| Bulan 2 \| ... |
+| Rencana, Jobdesk, Deskripsi Project | project/task yang ditugaskan, deliverable | paragraph + jobdesk list |
+| Implementasi, Proses | metodologi, sprint/milestone, kolaborasi | narrative per project/sprint; sertakan metodologi (Agile/Scrum/dll) |
+| Teknologi, Metode | bahasa, framework, tools | table: Kategori \| Teknologi/Tools \| Kegunaan |
+| Hasil, Pencapaian | yang di-deliver/shipped, metrik | list deliverable + deskripsi |
+| Judul Tugas Akhir | topik TA berdasarkan pengalaman | table: No \| Usulan Judul TA \| Deskripsi Singkat |
+| Kesimpulan | capaian, skill berkembang, relevansi kurikulum RPL | 3–5 paragraphs |
+| Saran | konteks dari mahasiswa | saran untuk: (1) mahasiswa magang selanjutnya, (2) Prodi RPL UPI Cibiru, (3) perusahaan mitra |
 
-**2.2 Bidang Kerja / Usaha dan Layanan** — ask: what products/services does the company offer?
-→ 1–2 paragraphs + list of main products/services.
+If section title matches no keyword → ask user what they want covered, write appropriate academic prose.
 
-**2.3 Peran Mahasiswa dalam Mitra** — ask: role title, team, responsibilities:
-→ Paragraph + numbered list of tanggung jawab.
+**Bab III special rule** (when `sections_flexible: true` in config):
+- First ask: "Jenis magang / role kamu apa? (mis. software dev, QA, data, desain grafis, admin/ops, dll)"
+- Coding-heavy role → use config sections as-is.
+- Non-coding role → suggest adapted section titles that surface SE/RPL angle (process, tooling, requirements, quality, automation). Confirm with student before writing.
+- Apply `<image-rule>` at end of Bab III: ask for documentation photos. Insert `![deskripsi](path)` on its own line near relevant sub-section.
 
-**2.4 Jadwal Kegiatan** — ask: monthly activity plan:
-→ Generate markdown table:
-| No | Kegiatan | Bulan 1 | Bulan 2 | Bulan 3 | Bulan 4 |
-
-Save as `bab2.md`.
-
-## Step 7 — BAB III (Pelaksanaan Kegiatan)
-
-Bab III is the MOST variable chapter — it depends on the student's internship type. The sub-sections below (3.1–3.5) are the pedoman's DEFAULT suggestion (`sections_flexible: true` in config), not a fixed template.
-
-First ask: "Jenis magang / role kamu apa? (mis. software dev, QA, data, desain grafis, admin/ops, dll)". Then:
-- If a coding-heavy role → the default 3.1–3.5 fit well, use them.
-- If a non-coding role → adapt section titles to the actual work, BUT apply `<rpl-emphasis-rule>`: every section must still surface the SE/RPL angle (process, tooling, requirements, quality, automation). Suggest adapted headings and let the student confirm.
-
-Default sub-sections:
-
-**3.1 Rencana Kegiatan / Jobdesk / Deskripsi Project** — ask: assigned projects/tasks, deliverables:
-→ Overview paragraph + jobdesk list.
-
-**3.2 Implementasi Kegiatan / Proses Project** — ask: methodology, sprint/milestone breakdown, collaboration:
-→ Narrative with sub-sections per project/sprint. Include metodologi (Agile/Scrum/etc).
-
-**3.3 Teknologi dan Metode** — ask: languages, frameworks, tools, methodologies:
-→ Table: Kategori | Teknologi/Tools | Kegunaan
-
-**3.4 Hasil Karya / Pencapaian Akhir** — ask: what was shipped/delivered, any metrics:
-→ List of deliverables + description.
-
-**3.5 List Judul Tugas Akhir** — ask: based on experience, suggest 3–5 potential TA topics:
-→ Table: No | Usulan Judul TA | Deskripsi Singkat
-
-**Dokumentasi visual** — apply `<image-rule>`. Ask: "Punya foto dokumentasi kegiatan? (suasana kerja, meeting tim, deliverable, screenshot fitur) — kasih path + deskripsi tiap foto." Insert each as `![deskripsi](path)` on its own line near the relevant sub-section. Skip if none.
-
-Save as `bab3.md`.
-
-## Step 8 — BAB IV (Kesimpulan dan Saran)
-
-**4.1 Kesimpulan** — ask: what was achieved, skills developed, alignment with RPL curriculum:
-→ 3–5 paragraphs.
-
-**4.2 Saran** — ask for context, then generate saran for:
-- Mahasiswa yang akan magang selanjutnya
-- Program Studi RPL UPI Cibiru
-- Perusahaan mitra
-
-Save as `bab4.md`.
+Save as `bab[N].md` matching the argument.
 
 ## Step 9 — Confirm and suggest next step
 
@@ -230,11 +206,14 @@ After saving any section:
 ✅ [section] disimpan: [path].md
 
 Progress:
-  ✅ bab1.md    ✅ bab2.md
-  ⬜ bab3.md    ⬜ bab4.md
-  ⬜ cover.md   ⬜ kata-pengantar.md
+  [list all bab files from config bagian_isi, cover.md, kata-pengantar.md — ✅ if .md exists in output_dir, ⬜ if not]
 
 Jalankan /rpl-magang:laporan compile untuk export ke DOCX.
+```
+
+Check which `.md` files exist in the output dir to show accurate ✅/⬜ status:
+```bash
+ls [output_dir]/*.md 2>/dev/null
 ```
 
 </steps>
