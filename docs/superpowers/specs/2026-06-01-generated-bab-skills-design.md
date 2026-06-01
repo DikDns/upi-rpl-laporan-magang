@@ -120,10 +120,12 @@ New **Step 8 — Generate per-bab skills** inserted between Step 6 (save config)
 2. Map keys: `babI → bab1`, `babII → bab2`, `babIII → bab3`, `babIV → bab4`, etc.
 3. For each bab: render SKILL.md string with verbatim sub-section titles from config
 4. Write to `~/.claude/magang-tools/generated-skills/laporan-bab-N/SKILL.md`
-5. Sync bab skills to plugin cache:
+5. Discover plugin cache path dynamically and sync bab skills:
 ```bash
-cp -r ~/.claude/magang-tools/generated-skills/laporan-bab-* \
-       ~/.claude/plugins/cache/rpl-magang/rpl-magang/0.1.0/skills/
+CACHE=$(ls -d ~/.claude/plugins/cache/rpl-magang/rpl-magang/*/skills 2>/dev/null | sort -V | tail -1)
+if [ -n "$CACHE" ]; then
+  cp -r ~/.claude/magang-tools/generated-skills/laporan-bab-* "$CACHE/"
+fi
 ```
 
 `laporan-compile` is a static skill in the plugin repo — already in cache, not generated.
@@ -223,9 +225,9 @@ Add after plugin cache population:
 
 ```bash
 GENERATED="$HOME/.claude/magang-tools/generated-skills"
-CACHE="$HOME/.claude/plugins/cache/rpl-magang/rpl-magang/0.1.0/skills"
+CACHE=$(ls -d "$HOME/.claude/plugins/cache/rpl-magang/rpl-magang/"/*/skills 2>/dev/null | sort -V | tail -1)
 
-if [ -d "$GENERATED" ]; then
+if [ -d "$GENERATED" ] && [ -n "$CACHE" ]; then
   echo "Syncing generated bab skills to plugin cache..."
   for skill_dir in "$GENERATED"/laporan-bab-*/; do
     [ -d "$skill_dir" ] && cp -r "$skill_dir" "$CACHE/"
@@ -237,7 +239,7 @@ This runs on every `install.sh` execution — so after any plugin update, genera
 
 ## Constraints
 
-- Plugin cache path `rpl-magang/0.1.0` is hardcoded in sync commands. If version bumps, init and install.sh must update the path. Acceptable for now — version bump is a developer action, not student action.
+- Plugin cache path is discovered dynamically via `ls -d .../rpl-magang/*/skills | sort -V | tail -1` — always targets the highest installed version. Works across any version bump without code changes.
 - DAFTAR ISI page numbers require student to click "Update Table" in Word. This is a known Word behavior, not a bug. The skill confirm step reminds them.
 - Generated skills inherit `ai-writing-rule`, `rpl-emphasis-rule`, `image-rule` by inlining — if those rules change in the future, init must be re-run to regenerate.
 - `sections_flexible: true` in config means bab3 sub-sections are pedoman defaults, not fixed. The generated bab3 skill includes a note to ask about role type and adapt accordingly.
