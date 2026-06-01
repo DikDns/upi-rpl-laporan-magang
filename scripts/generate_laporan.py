@@ -252,7 +252,7 @@ def md_to_doc(doc, md_text: str, font_name: str, font_size: int,
                     tbl.style = "Table Grid"
                     # Fit columns within printable width so Word does not
                     # re-distribute / overflow the page (equal columns).
-                    sec0 = doc.sections[0]
+                    sec0 = doc.sections[-1]
                     usable = sec0.page_width - sec0.left_margin - sec0.right_margin
                     col_w = Emu(int(usable) // max_cols)
                     set_fixed_layout(tbl, [col_w] * max_cols)
@@ -346,6 +346,72 @@ def _insert_toc_field(doc, font_name: str, font_size: int, title: str, toc_instr
     fc3 = OxmlElement("w:fldChar")
     fc3.set(qn("w:fldCharType"), "end")
     run3._r.append(fc3)
+
+
+def _end_section(last_para, page_num_fmt: str, start=None):
+    """Insert w:sectPr into last_para's pPr to end the current DOCX section.
+
+    page_num_fmt: 'none', 'lowerRoman', 'decimal'
+    """
+    from docx.oxml.ns import qn
+    from docx.oxml import OxmlElement
+
+    pPr = last_para._p.get_or_add_pPr()
+
+    for existing in pPr.findall(qn("w:sectPr")):
+        pPr.remove(existing)
+
+    sectPr = OxmlElement("w:sectPr")
+
+    sectType = OxmlElement("w:type")
+    sectType.set(qn("w:val"), "nextPage")
+    sectPr.append(sectType)
+
+    if page_num_fmt != "none":
+        pgNumType = OxmlElement("w:pgNumType")
+        pgNumType.set(qn("w:fmt"), page_num_fmt)
+        if start is not None:
+            pgNumType.set(qn("w:start"), str(start))
+        sectPr.append(pgNumType)
+
+    pPr.append(sectPr)
+
+
+def _add_page_num_footer(section, font_name: str, font_size: int):
+    """Add a centered PAGE field footer to a document section."""
+    from docx.oxml.ns import qn
+    from docx.oxml import OxmlElement
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.shared import Pt
+
+    footer = section.footer
+    footer.is_linked_to_previous = False
+
+    p = footer.paragraphs[0]
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    for run in list(p.runs):
+        run._r.getparent().remove(run._r)
+
+    run1 = p.add_run()
+    fc1 = OxmlElement("w:fldChar")
+    fc1.set(qn("w:fldCharType"), "begin")
+    run1._r.append(fc1)
+
+    run2 = p.add_run()
+    instr = OxmlElement("w:instrText")
+    instr.set(qn("xml:space"), "preserve")
+    instr.text = " PAGE "
+    run2._r.append(instr)
+
+    run3 = p.add_run()
+    fc3 = OxmlElement("w:fldChar")
+    fc3.set(qn("w:fldCharType"), "end")
+    run3._r.append(fc3)
+
+    for r in p.runs:
+        r.font.name = font_name
+        r.font.size = Pt(font_size)
 
 
 def _gap(doc, n=1):
@@ -552,9 +618,32 @@ def compile_sections(sections_dir: Path, output_path: Path, config: dict) -> Pat
             return "L"
         return None
 
+    COVER_SECTIONS        = {"cover"}
+    FRONT_MATTER_SECTIONS = {
+        "lembar-pengesahan", "kata-pengantar",
+        "daftar-isi", "daftar-tabel", "daftar-gambar",
+    }
+
+    prev_category = None
+
     for idx, (name, md_file) in enumerate(ordered):
+        if name in COVER_SECTIONS:
+            category = "cover"
+        elif name in FRONT_MATTER_SECTIONS:
+            category = "front"
+        else:
+            category = "body"
+
         if idx > 0:
-            doc.add_page_break()
+            if prev_category == "cover" and category == "front":
+                _end_section(doc.paragraphs[-1], "none")
+            elif prev_category == "front" and category == "body":
+                _end_section(doc.paragraphs[-1], "lowerRoman", start=1)
+            else:
+                doc.add_page_break()
+
+        prev_category = category
+
         md_content = md_file.read_text(encoding="utf-8") if md_file else ""
         # Cover and Lembar Pengesahan are fixed full-page templates with
         # per-line font sizes — rendered from key:value data, not markdown.
@@ -580,6 +669,15 @@ def compile_sections(sections_dir: Path, output_path: Path, config: dict) -> Pat
                       chapter_label=chapter_label_for(name),
                       fig_counter=fig_counter,
                       heading_sizes=heading_sizes)
+
+    # Configure page numbering footers per section.
+    sects = doc.sections
+    if len(sects) >= 2:
+        _add_page_num_footer(sects[1], font_name, font_size)
+    if len(sects) >= 3:
+        _add_page_num_footer(sects[-1], font_name, font_size)
+    elif len(sects) == 1:
+        _add_page_num_footer(sects[0], font_name, font_size)
 
     output_path = versioned_path(output_path)
     doc.save(str(output_path))
