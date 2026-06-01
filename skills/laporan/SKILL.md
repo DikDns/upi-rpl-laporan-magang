@@ -1,7 +1,7 @@
 ---
 name: laporan
-description: "Write internship report (Laporan MBKM/P3NK) section by section with AI-assisted writing. Compiles all sections to single DOCX."
-argument-hint: "[bab1|bab2|bab3|bab4|cover|lembar-pengesahan|kata-pengantar|compile] [--output-dir /path]"
+description: "Tulis section front matter laporan magang: cover, lembar-pengesahan, kata-pengantar"
+argument-hint: "[cover|lembar-pengesahan|kata-pengantar] [--output-dir /path]"
 allowed-tools:
   - Read
   - Write
@@ -56,34 +56,16 @@ test -f ~/.claude/magang-tools/config.json && echo "ok" || echo "missing"
 ```
 If missing → "Jalankan /rpl-magang:init dulu." Stop.
 
-Read `config.document_structure.bagian_isi` to get the bab list (keys like `babI`, `babII`, ... → map to `bab1`, `bab2`, ...).
-
-Check `$ARGUMENTS` for section name or `compile`:
-- valid bab args: `bab1` through `bab[N]` based on config `bagian_isi` keys
-- other valid args: `cover`, `lembar-pengesahan`, `kata-pengantar`, `compile`
-- If none → ask: "Mau kerjain section apa?" and list available babs from config + cover/lembar-pengesahan/kata-pengantar/compile
-
-When mode is `compile`, before running, check the required front-matter sections from config `document_structure.bagian_awal` (e.g. Halaman Judul → cover, Lembar Pengesahan → lembar-pengesahan). If a `.md` for a required section is missing in the output dir, warn: "⚠️ [Section] belum dibuat — sesuai pedoman ini wajib. Buat dulu? (mis. /rpl-magang:laporan lembar-pengesahan)". Let user proceed or stop.
+Check `$ARGUMENTS` for section name:
+- valid args: `cover`, `lembar-pengesahan`, `kata-pengantar`
+- If none → ask: "Mau kerjain section apa? (cover/lembar-pengesahan/kata-pengantar)"
+  Jika user minta bab → "Gunakan /rpl-magang:laporan-bab-1 (atau bab-2, bab-3, bab-4) yang sudah di-generate pas init."
+  Jika user minta compile → "Gunakan /rpl-magang:laporan-compile"
 
 Ask for output directory if not in args (default: `./laporan-draft/`):
 ```bash
 mkdir -p [output_dir]
 ```
-
-## Step 2 — COMPILE mode
-
-If mode == `compile`:
-1. List all .md files in the sections dir
-2. Show: "Section yang akan di-compile: [list]"
-3. Ask: "Nama file output? (default: Laporan_MBKM_[NamaMhs].docx)"
-4. Run:
-```bash
-~/.claude/magang-tools/venv/bin/python ~/.claude/magang-tools/scripts/generate_laporan.py \
-    --sections-dir "[sections_dir]" \
-    --output "[output_path]"
-```
-5. Report final output path (auto-versioned).
-6. Stop.
 
 ## Step 3 — COVER
 
@@ -147,58 +129,6 @@ Then the formal opening-letter body:
 > LAMPIRAN) always use `# ` (H1 → centered, bold, chapter size), same as
 > BAB titles. Never `##`.
 
-## Step 5 — BAB content (config-driven)
-
-For `bab1`, `bab2`, `bab3`, `bab4` (and any additional babs in config):
-
-**Load bab structure from config:**
-Read `config.document_structure.bagian_isi`. Map argument to key:
-`bab1 → babI`, `bab2 → babII`, `bab3 → babIII`, `bab4 → babIV`
-
-Get `title` (bab heading) and `sections[]` from that key.
-
-**Write chapter heading in .md:**
-```markdown
-# [BAB TITLE from config, uppercase]
-```
-
-**For each section in `sections[]` (config order):**
-
-Write sub-section heading then ask user for content:
-```markdown
-## [section.number] [section.title]
-```
-
-**Writing hints by section title keywords:**
-
-| Keyword(s) in title | What to ask | Output format |
-|---------------------|-------------|---------------|
-| Latar Belakang | fenomena/masalah RPL yang memotivasi, relevansi perusahaan, tujuan belajar | 3–4 paragraphs; end: "...mendapat justifikasi untuk berkegiatan MBKM di [perusahaan]." |
-| Manfaat, Tujuan | manfaat dan tujuan magang | numbered list: Manfaat 1.dst, Tujuan 1.dst |
-| Waktu dan Tempat | tanggal mulai/akhir, alamat, divisi | paragraph + table: Waktu \| Tempat \| Divisi |
-| Ruang Lingkup | cakupan dan batasan kegiatan | paragraph + bullet list |
-| Gambaran Umum | sejarah, visi/misi, struktur org, skala | 2–3 paragraphs |
-| Bidang Kerja, Usaha, Layanan | produk/layanan perusahaan | 1–2 paragraphs + list produk/layanan |
-| Peran Mahasiswa | judul role, tim, tanggung jawab | paragraph + numbered list tanggung jawab |
-| Jadwal | rencana aktivitas per bulan | table: No \| Kegiatan \| Bulan 1 \| Bulan 2 \| ... |
-| Rencana, Jobdesk, Deskripsi Project | project/task yang ditugaskan, deliverable | paragraph + jobdesk list |
-| Implementasi, Proses | metodologi, sprint/milestone, kolaborasi | narrative per project/sprint; sertakan metodologi (Agile/Scrum/dll) |
-| Teknologi, Metode | bahasa, framework, tools | table: Kategori \| Teknologi/Tools \| Kegunaan |
-| Hasil, Pencapaian | yang di-deliver/shipped, metrik | list deliverable + deskripsi |
-| Judul Tugas Akhir | topik TA berdasarkan pengalaman | table: No \| Usulan Judul TA \| Deskripsi Singkat |
-| Kesimpulan | capaian, skill berkembang, relevansi kurikulum RPL | 3–5 paragraphs |
-| Saran | konteks dari mahasiswa | saran untuk: (1) mahasiswa magang selanjutnya, (2) Prodi RPL UPI Cibiru, (3) perusahaan mitra |
-
-If section title matches no keyword → ask user what they want covered, write appropriate academic prose.
-
-**Bab III special rule** (when `sections_flexible: true` in config):
-- First ask: "Jenis magang / role kamu apa? (mis. software dev, QA, data, desain grafis, admin/ops, dll)"
-- Coding-heavy role → use config sections as-is.
-- Non-coding role → suggest adapted section titles that surface SE/RPL angle (process, tooling, requirements, quality, automation). Confirm with student before writing.
-- Apply `<image-rule>` at end of Bab III: ask for documentation photos. Insert `![deskripsi](path)` on its own line near relevant sub-section.
-
-Save as `bab[N].md` matching the argument.
-
 ## Step 9 — Confirm and suggest next step
 
 After saving any section:
@@ -208,7 +138,7 @@ After saving any section:
 Progress:
   [list all bab files from config bagian_isi, cover.md, kata-pengantar.md — ✅ if .md exists in output_dir, ⬜ if not]
 
-Jalankan /rpl-magang:laporan compile untuk export ke DOCX.
+Jalankan /rpl-magang:laporan-compile untuk export ke DOCX.
 ```
 
 Check which `.md` files exist in the output dir to show accurate ✅/⬜ status:
