@@ -102,7 +102,7 @@ The engine handles title, "Diajukan...", logo (from `~/.claude/magang-tools/asse
 
 ## Step 3b — LEMBAR PENGESAHAN
 
-Required front-matter per pedoman (config `bagian_awal` lists "Lembar Pengesahan"). Fixed template (Lampiran Contoh Lembar Pengesahan) — rendered from key:value data, sizes 14/12/10pt.
+Required front-matter per pedoman (config `bagian_awal` lists "Lembar Pengesahan"). Fixed template (Lampiran Contoh Lembar Pengesahan, hal. 14) — rendered by the DOCX engine from 4 key:value fields.
 
 Ask:
 - Nama Dosen Pembimbing (+ gelar)
@@ -110,14 +110,19 @@ Ask:
 - Nama Ketua Program Studi RPL (kaprodi)
 - NIP Ketua Program Studi
 
-Generate `lembar-pengesahan.md` as key:value data only:
+Write `lembar-pengesahan.md` with EXACTLY these 4 lines — nothing else.
+No headings, no prose, no tables, no markdown formatting, no extra fields:
 ```
 dosen_pembimbing: [Nama + gelar]
 penyelia: [Nama penyelia]
 kaprodi: [Nama kaprodi + gelar]
 kaprodi_nip: [NIP]
 ```
-The engine renders the title, "Lembar Pengesahan", "Diajukan...", the Dosen Pembimbing/Penyelia lines, "Mengetahui, Ketua Program Studi ...," and the signature block.
+
+The DOCX engine automatically renders the full page: title (14pt), "Lembar Pengesahan" (12pt),
+"Diajukan sebagai salah satu syarat kegiatan MBKM..." (10pt), "Dosen Pembimbing :" and
+"Penyelia :" lines with names, "Mengetahui, Ketua Program Studi ...", and signature block.
+Do NOT reproduce any of that content in the .md file — the engine owns the layout.
 
 ## Step 4 — KATA PENGANTAR
 
