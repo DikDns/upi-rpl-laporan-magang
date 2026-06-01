@@ -4,6 +4,12 @@ Semua perubahan penting pada proyek ini dicatat di file ini.
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/),
 dan proyek ini memakai [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- Skill `penilaian-penyelia`: generate the official Lembar Penilaian Penyelia DOCX (pedoman v6) — blank for hand-scoring or prefilled with auto-computed Jumlah & Rata-rata.
+- `init` now extracts `penilaian_penyelia` indicators from the pedoman into config (with a pedoman-v6 default fallback for existing configs).
+
 ## [1.0.0-beta.2] — 2026-06-01
 
 Rilis perbaikan setelah uji pemakaian nyata (logbook Test Engineer, ~2 bulan

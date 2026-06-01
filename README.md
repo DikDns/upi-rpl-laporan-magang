@@ -38,6 +38,7 @@ Ada empat, masing-masing ngerjain satu hal doang.
 | `/rpl-magang:logbook` | Bikin logbook mingguan atau dua mingguan (Catatan Harian & Kehadiran) jadi DOCX. Bisa satuan, batch, atau import dari file lama. |
 | `/rpl-magang:laporan` | Nulis laporan per bab, terus `compile` jadi satu DOCX lengkap. |
 | `/rpl-magang:pks` | Bikin PKS dari template resmi. Yang diisi cuma bagian mitranya doang. |
+| `/rpl-magang:penilaian-penyelia` | generate Lembar Penilaian Penyelia (form penilaian dari pembimbing lapangan) sesuai pedoman, siap dicetak di KOP mitra |
 
 Urutannya simpel. `init` sekali, terus `logbook` tiap minggu, lanjut `laporan` per bab, `compile`, baru `pks`.
 
