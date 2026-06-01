@@ -8,7 +8,7 @@ Plugin Claude Code buat anak RPL UPI Cibiru. Bikin logbook, laporan magang, sama
 
 Capek kan copy-paste mulu terus ngerapihin DOCX satu-satu? Udah, kasih PDF pedoman sekali doang, sisanya biar plugin yang handle. Dari struktur bab, cover, lembar pengesahan, heading, sampe PKS, gas otomatis semua.
 
-![Status](https://img.shields.io/badge/status-public%20beta-orange) ![Versi](https://img.shields.io/badge/versi-1.0.0--beta.1-blue) ![Lisensi](https://img.shields.io/badge/lisensi-MIT-green)
+![Status](https://img.shields.io/badge/status-public%20beta-orange) ![Versi](https://img.shields.io/badge/versi-1.0.0--beta.3-blue) ![Lisensi](https://img.shields.io/badge/lisensi-MIT-green)
 
 </div>
 
@@ -38,7 +38,7 @@ Ada empat, masing-masing ngerjain satu hal doang.
 | `/rpl-magang:logbook` | Bikin logbook mingguan atau dua mingguan (Catatan Harian & Kehadiran) jadi DOCX. Bisa satuan, batch, atau import dari file lama. |
 | `/rpl-magang:laporan` | Nulis laporan per bab, terus `compile` jadi satu DOCX lengkap. |
 | `/rpl-magang:pks` | Bikin PKS dari template resmi. Yang diisi cuma bagian mitranya doang. |
-| `/rpl-magang:penilaian-penyelia` | generate Lembar Penilaian Penyelia (form penilaian dari pembimbing lapangan) sesuai pedoman, siap dicetak di KOP mitra |
+| `/rpl-magang:penilaian-penyelia` | Bikin Lembar Penilaian Penyelia sesuai pedoman. Kosong buat diisi tangan, atau bisa prefill nilai dulu. Siap cetak. |
 
 Urutannya simpel. `init` sekali, terus `logbook` tiap minggu, lanjut `laporan` per bab, `compile`, baru `pks`.
 
@@ -65,14 +65,27 @@ Plugin ini ngurus bagian ribetnya, biar lu bisa fokus ke isi. Yang penting dinil
 
 ## Examples
 
+### Alur kerja laporan
+
 ```
 1. /rpl-magang:init                  # sekali aja, arahin ke PDF pedoman
-2. /rpl-magang:logbook               # logbook tiap minggu
+2. /rpl-magang:logbook               # logbook tiap minggu (paralel sama nulis laporan)
 3. /rpl-magang:laporan cover
 4. /rpl-magang:laporan lembar-pengesahan
-5. /rpl-magang:laporan bab1 ... bab4 # tulis tiap bab
-6. /rpl-magang:laporan compile       # ekspor jadi DOCX lengkap
+5. /rpl-magang:laporan bab1          # tulis bab satu-satu
+   /rpl-magang:laporan bab2
+   /rpl-magang:laporan bab3
+   /rpl-magang:laporan bab4
+6. /rpl-magang:laporan compile       # ekspor jadi satu DOCX lengkap
 7. /rpl-magang:pks                   # bikin PKS
+```
+
+### Skills lainnya
+
+```
+/rpl-magang:logbook                  # buat logbook mingguan kapan aja
+/rpl-magang:pks                      # buat PKS, bisa dipanggil mandiri
+/rpl-magang:penilaian-penyelia       # generate lembar penilaian dari penyelia (siap cetak)
 ```
 
 ## Dependencies
