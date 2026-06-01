@@ -171,6 +171,37 @@ mkdir -p ~/.claude/magang-tools
 
 Use the Write tool to write the final config JSON.
 
+## Step 8 — Generate per-bab skills
+
+Run:
+```bash
+~/.claude/magang-tools/venv/bin/python \
+  ~/.claude/magang-tools/scripts/generate_bab_skills.py \
+  --config ~/.claude/magang-tools/config.json \
+  --output-dir ~/.claude/magang-tools/generated-skills
+```
+
+Parse JSON output. If error → show error, continue (skills can be regenerated later).
+
+Sync generated skills to plugin cache:
+```bash
+CACHE=$(ls -d ~/.claude/plugins/cache/rpl-magang/rpl-magang/*/skills 2>/dev/null | sort -V | tail -1)
+if [ -n "$CACHE" ]; then
+  for skill_dir in ~/.claude/magang-tools/generated-skills/laporan-bab-*/; do
+    [ -d "$skill_dir" ] && cp -r "$skill_dir" "$CACHE/"
+  done
+fi
+```
+
+Show which skills were generated:
+```
+🔧 Skills yang di-generate dari pedoman kamu:
+  /rpl-magang:laporan-bab-1  — BAB I [title from config]
+  /rpl-magang:laporan-bab-2  — BAB II [title from config]
+  /rpl-magang:laporan-bab-3  — BAB III [title from config]
+  /rpl-magang:laporan-bab-4  — BAB IV [title from config]
+```
+
 ## Step 7 — Confirm
 
 Show:
@@ -178,10 +209,14 @@ Show:
 ✅ Setup selesai! Config disimpan di ~/.claude/magang-tools/config.json
 
 Skills siap digunakan:
+  /rpl-magang:laporan             — cover, lembar pengesahan, kata pengantar
+  /rpl-magang:laporan-compile     — compile semua section jadi DOCX
   /rpl-magang:logbook             — buat logbook mingguan
-  /rpl-magang:laporan             — tulis laporan magang
   /rpl-magang:pks                 — buat PKS
   /rpl-magang:penilaian-penyelia  — buat lembar penilaian penyelia
+
+⚠️  RESTART CLAUDE CODE untuk mengaktifkan skill bab yang baru di-generate:
+  /rpl-magang:laporan-bab-1, laporan-bab-2, laporan-bab-3, laporan-bab-4
 ```
 
 </steps>
