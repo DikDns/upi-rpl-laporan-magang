@@ -42,6 +42,17 @@ def file_hash(path: str) -> str:
 ROMAN = {"I": 1, "II": 2, "III": 3, "IV": 4, "V": 5, "VI": 6,
          "VII": 7, "VIII": 8}
 
+FILE_NAMING_DEFAULT = {
+    "form_konversi": "Form_Mk_Konversi_MBKM_{nama_mhs}.xlsx",
+    "loa": "LoA_{nama_mhs}.pdf",
+    "logbook": "Logbook_{nama_mhs}.pdf",
+    "laporan": "Laporan_MBKM_{nama_mhs}.pdf",
+    "transkrip_nilai": "Transkrip_Nilai_{nama_mhs}.pdf",
+    "pks": "PKS_{nama_perusahaan}.pdf",
+    "presentasi": "presentasi_{nama_mhs}.mp4",
+    "sertifikat": "Sertifikat_{nama_kegiatan}_{nama_mhs}.pdf",
+}
+
 PENILAIAN_DEFAULT = {
     "title": "PENILAIAN PELAKSANAAN KEGIATAN MBKM PROGRAM MSIB / P3NK (MAGANG MANDIRI)",
     "scale": "0 – 100",
@@ -273,6 +284,7 @@ def main():
         "assessment_criteria": extract_assessment(full_text),
         "logbook_template": extract_logbook_template(full_text),
         "penilaian_penyelia": extract_penilaian_penyelia(full_text),
+        "file_naming": FILE_NAMING_DEFAULT,
         "pks_template_path": None,
         "rpl_emphasis": {
             "mode": "prompt",

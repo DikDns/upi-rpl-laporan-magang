@@ -139,6 +139,28 @@ Skill `laporan` / `logbook` / `pks` membaca ini dan hanya minta konfirmasi,
 tidak tanya ulang. Bila skip, `student_identity` tidak ditulis (skill akan
 menanyakannya saat dibutuhkan, lalu menyimpannya balik).
 
+## Step 5c — Konfirmasi konvensi penamaan file (opsional)
+
+Tampilkan template nama file default dari config dan tanyakan apakah ada yang mau diubah:
+
+```
+📁 Konvensi penamaan file P3NK (dari panduan):
+
+  form_konversi    : Form_Mk_Konversi_MBKM_{nama_mhs}.xlsx
+  loa              : LoA_{nama_mhs}.pdf
+  logbook          : Logbook_{nama_mhs}.pdf
+  laporan          : Laporan_MBKM_{nama_mhs}.pdf
+  transkrip_nilai  : Transkrip_Nilai_{nama_mhs}.pdf
+  pks              : PKS_{nama_perusahaan}.pdf
+  presentasi       : presentasi_{nama_mhs}.mp4
+  sertifikat       : Sertifikat_{nama_kegiatan}_{nama_mhs}.pdf
+```
+
+Tanya: "Ada template nama file yang mau diubah? Kalau sudah sesuai, ketik 'lanjut'."
+
+Jika user ubah salah satu → update key yang relevan di `config["file_naming"]`.
+Jika skip/lanjut → biarkan default.
+
 ## Step 6 — Save config
 
 Write config to `~/.claude/magang-tools/config.json`.
@@ -156,9 +178,10 @@ Show:
 ✅ Setup selesai! Config disimpan di ~/.claude/magang-tools/config.json
 
 Skills siap digunakan:
-  /rpl-magang:logbook  — buat logbook mingguan
-  /rpl-magang:laporan  — tulis laporan magang
-  /rpl-magang:pks      — buat PKS
+  /rpl-magang:logbook             — buat logbook mingguan
+  /rpl-magang:laporan             — tulis laporan magang
+  /rpl-magang:pks                 — buat PKS
+  /rpl-magang:penilaian-penyelia  — buat lembar penilaian penyelia
 ```
 
 </steps>
