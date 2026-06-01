@@ -42,6 +42,24 @@ def file_hash(path: str) -> str:
 ROMAN = {"I": 1, "II": 2, "III": 3, "IV": 4, "V": 5, "VI": 6,
          "VII": 7, "VIII": 8}
 
+PENILAIAN_DEFAULT = {
+    "title": "PENILAIAN PELAKSANAAN KEGIATAN MBKM PROGRAM MSIB / P3NK (MAGANG MANDIRI)",
+    "scale": "0 – 100",
+    "note": "Jika sudah ada form dari instansi, form penilaian ini tidak berlaku.",
+    "indicators": [
+        "Pemahaman terhadap tugas dan tanggung jawab",
+        "Penguasaan konsep dan teori yang relevan",
+        "Kemampuan dalam pemrograman / teknis",
+        "Penggunaan teknologi, tools, dan framework",
+        "Kualitas hasil kerja",
+        "Kemampuan analisis, pemecahan masalah & inisiatif",
+        "Komunikasi dan kolaborasi dalam tim",
+        "Manajemen waktu dan ketepatan penyelesaian tugas",
+        "Adaptasi terhadap lingkungan kerja dan perubahan",
+        "Etika, sikap profesional, dan tanggung jawab",
+    ],
+}
+
 
 def _parse_bab_outline(block: str) -> dict:
     """Parse a clean 'Bab N TITLE / x.y Title' outline block line by line.
@@ -181,6 +199,50 @@ def extract_logbook_template(full_text: str) -> dict:
     }
 
 
+def extract_penilaian_penyelia(full_text: str) -> dict:
+    """Extract the supervisor-assessment indicators from the 'Lembar Penilaian
+    Penyelia' lampiran. Indicator titles wrap across lines in the PDF, so we
+    join continuation lines until the next 'N.' marker. Falls back to the
+    bundled pedoman-v6 default if parsing yields an unexpected count."""
+    import copy
+    result = copy.deepcopy(PENILAIAN_DEFAULT)
+
+    # Locate the region: from the penilaian heading to the 'Jumlah' total row.
+    start = re.search(r'Lembar\s+Penilaian\s+Penyelia', full_text, re.IGNORECASE)
+    if not start:
+        start = re.search(r'Indikator\s+Penilaian', full_text, re.IGNORECASE)
+    if not start:
+        return result
+    region = full_text[start.end():]
+    stop = re.search(r'\n\s*(Jumlah|Rata-?rata)\b', region)
+    if stop:
+        region = region[:stop.start()]
+
+    # Parse numbered items, joining wrapped continuation lines.
+    indicators = []
+    current = None
+    for raw in region.splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        m = re.match(r'^(\d{1,2})\.\s*(.*)$', line)
+        if m:
+            if current:
+                indicators.append(current)
+            current = m.group(2).strip()
+        elif current is not None:
+            # continuation line for the in-progress indicator
+            current = (current + " " + line).strip()
+    if current:
+        indicators.append(current)
+
+    # Clean whitespace; reject obviously-bad parses.
+    indicators = [re.sub(r'\s+', ' ', x).strip() for x in indicators if x]
+    if len(indicators) >= 5:
+        result["indicators"] = indicators
+    return result
+
+
 # ── main ─────────────────────────────────────────────────────
 
 def main():
@@ -210,6 +272,7 @@ def main():
         "formatting": extract_formatting(full_text),
         "assessment_criteria": extract_assessment(full_text),
         "logbook_template": extract_logbook_template(full_text),
+        "penilaian_penyelia": extract_penilaian_penyelia(full_text),
         "pks_template_path": None,
         "rpl_emphasis": {
             "mode": "prompt",
