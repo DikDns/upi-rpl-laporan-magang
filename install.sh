@@ -172,7 +172,8 @@ SKILL_CACHE=$(ls -d "$HOME/.claude/plugins/cache/rpl-magang/rpl-magang/"/*/skill
 if [ -d "$GENERATED" ] && [ -n "$SKILL_CACHE" ]; then
   echo "Syncing generated bab skills to plugin cache..."
   for skill_dir in "$GENERATED"/laporan-bab-*/; do
-    [ -d "$skill_dir" ] && cp -r "$skill_dir" "$SKILL_CACHE/"
+    dir="${skill_dir%/}"
+    [ -d "$dir" ] && cp -r "$dir" "$SKILL_CACHE/"
   done
   echo "✓ Bab skills synced."
 fi

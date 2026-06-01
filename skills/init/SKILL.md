@@ -188,7 +188,8 @@ Sync generated skills to plugin cache:
 CACHE=$(ls -d ~/.claude/plugins/cache/rpl-magang/rpl-magang/*/skills 2>/dev/null | sort -V | tail -1)
 if [ -n "$CACHE" ]; then
   for skill_dir in ~/.claude/magang-tools/generated-skills/laporan-bab-*/; do
-    [ -d "$skill_dir" ] && cp -r "$skill_dir" "$CACHE/"
+    dir="${skill_dir%/}"
+    [ -d "$dir" ] && cp -r "$dir" "$CACHE/"
   done
 fi
 ```
