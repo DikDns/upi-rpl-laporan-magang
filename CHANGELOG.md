@@ -6,9 +6,29 @@ dan proyek ini memakai [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.0.0-rc.1] — 2026-06-12
+
+Rilis perbaikan mesin compile laporan setelah uji pemakaian nyata (peran Test
+Engineer). Fokus: **DAFTAR ISI/TABEL/GAMBAR yang beneran kebaca Word**, tata
+letak A4 konsisten, sitasi APA, dan output multi-format.
+
 ### Added
 - Skill `penilaian-penyelia`: generate the official Lembar Penilaian Penyelia DOCX (pedoman v6) — blank for hand-scoring or prefilled with auto-computed Jumlah & Rata-rata.
 - `init` now extracts `penilaian_penyelia` indicators from the pedoman into config (with a pedoman-v6 default fallback for existing configs).
+- **Output multi-format** via LibreOffice — `--also odt` (default) / `--also pdf` menghasilkan ODT/PDF di samping DOCX. Tahan path berisi spasi (convert lewat tempdir tanpa spasi).
+- **Sitasi APA & Daftar Pustaka** — skill `laporan` Step 5: setiap klaim faktual butuh in-text `(Penulis, Tahun)` + entri `daftar-pustaka.md`; section `daftar-pustaka` otomatis hanging indent (APA-7). Bab skills sekarang mengingatkan klaim yang belum tersitasi.
+- **Konvensi markdown baru** yang didukung engine: `_italic_`, caption tabel `Tabel: <judul>` (→ DAFTAR TABEL), dan blok tanda tangan `[SIGN] … [/SIGN]`. Didokumentasikan di `docs/KONVENSI_MARKDOWN.md`.
+
+### Fixed
+- **A4 + PORTRAIT di semua section.** Section break setelah cover sebelumnya ter-render Letter/landscape karena `sectPr` tanpa `pgSz`/`pgMar`; sekarang semua `doc.sections` dipaksa A4 portrait + margin dari config.
+- **DAFTAR ISI/TABEL/GAMBAR tidak lagi kosong.** Heading kini memakai Word Heading styles (bukan paragraf bold biasa), front-matter title jadi Heading 1, field TOC well-formed (`fldChar separate` + placeholder), dan `updateFields=true` → Word/LibreOffice auto-update saat dibuka.
+- **Judul bab "BAB I … IV"** dirender dua baris terpusat (Roman + judul) dalam satu Heading 1.
+- **Italic `_..._`** kini ter-parse (sebelumnya tampil literal dengan underscore).
+- **Caption gambar & tabel via field SEQ** (style "Caption", prefix per-bab "Gambar/Tabel B.N"), warna dipaksa hitam (sebelumnya angka jadi biru saat field di-update). DAFTAR TABEL/GAMBAR muncul hanya jika ada caption-nya.
+- **Hanya section dikenal yang di-compile** (`^bab\d+$` + front/back-matter) — Logbook, PKS, lampiran milik penulis tidak ikut ter-compile otomatis.
+- **Numbered list** dirender manual dengan hanging indent dan **restart per list** (dulu satu counter global bikin Bab IV mulai dari angka besar).
+- **Paragraf justify**; **Daftar Pustaka** hanging indent (APA).
+- **Lembar Pengesahan & blok tanda tangan** memakai tabel borderless (label | `:` | value) — titik dua sejajar di font proporsional.
 
 ## [1.0.0-beta.2] — 2026-06-01
 
@@ -82,5 +102,6 @@ skenario pengguna** (lihat `KNOWN_LIMITATIONS.md`).
   mendaftarkan plugin penuh: cache, marketplace, `known_marketplaces.json`,
   `settings.json` (`enabledPlugins` + `extraKnownMarketplaces`).
 
+[1.0.0-rc.1]: https://github.com/DikDns/upi-rpl-laporan-magang/releases/tag/v1.0.0-rc.1
 [1.0.0-beta.2]: https://github.com/DikDns/upi-rpl-laporan-magang/releases/tag/v1.0.0-beta.2
 [1.0.0-beta.1]: https://github.com/DikDns/upi-rpl-laporan-magang/releases/tag/v1.0.0-beta.1

@@ -1,6 +1,6 @@
-# Batasan yang Diketahui (Public Beta)
+# Batasan yang Diketahui (Release Candidate)
 
-> Status: **`1.0.0-beta.1`** — fungsional, tapi belum diuji menyeluruh.
+> Status: **`1.0.0-rc.1`** — fungsional, tapi belum diuji menyeluruh.
 > Selalu **periksa hasil DOCX secara manual** sebelum dikumpulkan.
 
 Skill ini sudah diuji pada **pedoman RPL UPI Cibiru "Versi ke-6 MBKM/P3NK"**
@@ -31,10 +31,22 @@ bermasalah**:
 - Tanggal terbilang **diketik manual** — tidak ada validasi/konversi
   otomatis dari tanggal numerik.
 
+## Field Word & output (compile)
+- DAFTAR ISI, DAFTAR TABEL/GAMBAR, caption, dan nomor halaman pakai **field
+  Word** (TOC/SEQ). Engine sudah set `updateFields=true`, jadi field
+  ter-update saat file dibuka pertama kali di **Word/LibreOffice**. Kalau
+  belum keisi, buka & "Update Field" (atau ekspor PDF) sekali.
+- Di **Google Docs murni**, DAFTAR ISI tampil native, tapi
+  table-of-figures/tables hanya snapshot — buka/Update sekali di
+  LibreOffice/Word, atau ekspor PDF, biar nomornya pasti benar.
+- Output tambahan **ODT/PDF** (`--also`) butuh **LibreOffice** terpasang;
+  kalau tidak ada, hanya `.docx` yang dibuat. Default `--also` = `odt` saja.
+
 ## Lingkungan
 - Diuji di **macOS**. Path Linux seharusnya sama; **Windows (PowerShell)**
   belum diuji end-to-end.
 - Butuh **Python 3.9+** dengan `python-docx`, `pdfplumber`, `Pillow`.
+- Untuk ekspor ODT/PDF: **LibreOffice** (opsional).
 
 ## Cara melapor
 Temukan bug? Buka issue di

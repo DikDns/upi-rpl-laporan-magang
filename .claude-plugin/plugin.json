@@ -1,7 +1,7 @@
 {
   "name": "rpl-magang",
-  "description": "Toolkit Claude Code untuk mahasiswa RPL UPI Cibiru — generate logbook, laporan magang (cover, lembar pengesahan, bab, dokumentasi gambar), dan PKS dari template resmi. [Public Beta]",
-  "version": "1.0.0-beta.2",
+  "description": "Toolkit Claude Code untuk mahasiswa RPL UPI Cibiru — generate logbook, laporan magang (cover, lembar pengesahan, bab, dokumentasi gambar), dan PKS dari template resmi. [Release Candidate]",
+  "version": "1.0.0-rc.1",
   "author": {
     "name": "DikDns",
     "url": "https://github.com/dikdns/upi-rpl-laporan-magang"

@@ -1,6 +1,6 @@
 # Berkontribusi
 
-Makasih udah mau bantu! Proyek ini **public beta** — laporan bug &
+Makasih udah mau bantu! Proyek ini **release candidate** — laporan bug &
 masukan sangat dihargai.
 
 ## Lapor bug / minta fitur

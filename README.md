@@ -8,7 +8,7 @@ Plugin Claude Code buat anak RPL UPI Cibiru. Bikin logbook, laporan magang, sama
 
 Capek kan copy-paste mulu terus ngerapihin DOCX satu-satu? Udah, kasih PDF pedoman sekali doang, sisanya biar plugin yang handle. Dari struktur bab, cover, lembar pengesahan, heading, sampe PKS, gas otomatis semua.
 
-![Status](https://img.shields.io/badge/status-public%20beta-orange) ![Versi](https://img.shields.io/badge/versi-1.0.0--beta.3-blue) ![Lisensi](https://img.shields.io/badge/lisensi-MIT-green)
+![Status](https://img.shields.io/badge/status-release%20candidate-orange) ![Versi](https://img.shields.io/badge/versi-1.0.0--rc.1-blue) ![Lisensi](https://img.shields.io/badge/lisensi-MIT-green)
 
 </div>
 
@@ -26,7 +26,7 @@ irm https://raw.githubusercontent.com/DikDns/upi-rpl-laporan-magang/main/install
 
 Abis install, restart Claude Code dulu ya biar skillnya nongol.
 
-> 🧪 Ini masih **public beta**. Udah jalan dan udah gw tes pake pedoman RPL UPI Cibiru Versi ke-6, tapi belum dites buat semua skenario. Jadi tetep cek hasil DOCX-nya dulu sebelum dikumpulin, jangan main kirim aja. Detail batasannya ada di [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md).
+> 🧪 Ini **release candidate** (rc.1). Udah jalan dan udah gw tes pake pedoman RPL UPI Cibiru Versi ke-6 di skenario nyata (peran Test Engineer), tapi belum dites buat semua skenario. Jadi tetep cek hasil DOCX-nya dulu sebelum dikumpulin, jangan main kirim aja. Detail batasannya ada di [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md).
 
 ## Skills
 
@@ -98,6 +98,7 @@ Plugin ini ngurus bagian ribetnya, biar lu bisa fokus ke isi. Yang penting dinil
 
 | Dokumen | Isinya |
 |---------|--------|
+| [docs/KONVENSI_MARKDOWN.md](docs/KONVENSI_MARKDOWN.md) | Sintaks markdown yang dikenali engine (italic, caption gambar/tabel, blok tanda tangan, daftar pustaka) |
 | [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md) | Batasan beta, apa yang belum dites dan mesti hati-hati |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Cara lapor bug sama setup buat ngoprek |
 | [CHANGELOG.md](CHANGELOG.md) | Apa aja yang berubah tiap rilis |
