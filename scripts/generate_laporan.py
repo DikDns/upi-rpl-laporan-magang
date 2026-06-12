@@ -58,8 +58,14 @@ def versioned_path(base: Path) -> Path:
 def apply_inline(paragraph, text: str, font_name: str, font_size_pt):
     from docx.shared import Pt
 
-    # Split on **bold**, *italic*, and `code`
-    parts = re.split(r"(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)", text)
+    # Split on **bold**, *italic*, _italic_, and `code`.
+    # The _underscore_ pattern uses boundary lookarounds + allows inner
+    # underscores so intraword cases like _idr_balance_ italicise fully.
+    parts = re.split(
+        r"(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`"
+        r"|(?<![A-Za-z0-9])_[^_]+(?:_[^_]+)*?_(?![A-Za-z0-9]))",
+        text,
+    )
     for part in parts:
         if not part:
             continue
@@ -69,6 +75,11 @@ def apply_inline(paragraph, text: str, font_name: str, font_size_pt):
             run.font.name = font_name
             run.font.size = Pt(font_size_pt)
         elif part.startswith("*") and part.endswith("*"):
+            run = paragraph.add_run(part[1:-1])
+            run.italic = True
+            run.font.name = font_name
+            run.font.size = Pt(font_size_pt)
+        elif len(part) >= 2 and part.startswith("_") and part.endswith("_"):
             run = paragraph.add_run(part[1:-1])
             run.italic = True
             run.font.name = font_name
@@ -110,7 +121,8 @@ def set_fixed_layout(table, widths):
 
 def md_to_doc(doc, md_text: str, font_name: str, font_size: int,
               base_dir: Path = None, chapter_label: str = None,
-              fig_counter: dict = None, heading_sizes: dict = None):
+              fig_counter: dict = None, heading_sizes: dict = None,
+              hanging_para: bool = False):
     from docx.shared import Pt, Cm, RGBColor
     from docx.enum.text import WD_ALIGN_PARAGRAPH
 
@@ -131,7 +143,14 @@ def md_to_doc(doc, md_text: str, font_name: str, font_size: int,
 
     def add_heading(level, text):
         size, align = hs.get(level, (font_size, "left"))
-        p = doc.add_paragraph()
+        # Use real Word Heading styles so the DAFTAR ISI (TOC field) and
+        # Google Docs' native Table of Contents can collect these headings.
+        # Appearance is overridden per-run/paragraph below to keep the campus
+        # convention (black, bold, document font, explicit size).
+        style_name = {1: "Heading 1", 2: "Heading 2",
+                      3: "Heading 3", 4: "Heading 4"}.get(level)
+        p = (doc.add_paragraph(style=style_name) if style_name
+             else doc.add_paragraph())
         p.alignment = (WD_ALIGN_PARAGRAPH.CENTER if align == "center"
                        else WD_ALIGN_PARAGRAPH.LEFT)
         p.paragraph_format.space_before = Pt(12)
@@ -143,6 +162,31 @@ def md_to_doc(doc, md_text: str, font_name: str, font_size: int,
         r.font.name = font_name
         r.font.size = Pt(size)
         r.font.color.rgb = BLACK
+        return p
+
+    ROMAN = {1: "I", 2: "II", 3: "III", 4: "IV", 5: "V", 6: "VI"}
+
+    def add_chapter_heading(roman, title):
+        # Chapter title for a BAB: two centered lines ("BAB III" / title) in a
+        # single Heading 1 paragraph so the DAFTAR ISI lists one clean entry.
+        size = hs.get(1, (14, "center"))[0]
+        p = doc.add_paragraph(style="Heading 1")
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p.paragraph_format.space_before = Pt(12)
+        p.paragraph_format.space_after = Pt(6)
+        p.paragraph_format.line_spacing = 1.0
+        p.paragraph_format.keep_with_next = True
+        r1 = p.add_run(f"BAB {roman}")
+        r1.bold = True
+        r1.font.name = font_name
+        r1.font.size = Pt(size)
+        r1.font.color.rgb = BLACK
+        r1.add_break()
+        r2 = p.add_run(title)
+        r2.bold = True
+        r2.font.name = font_name
+        r2.font.size = Pt(size)
+        r2.font.color.rgb = BLACK
         return p
 
     # Usable width on A4 with 4cm/3cm margins ≈ 14cm.
@@ -157,11 +201,6 @@ def md_to_doc(doc, md_text: str, font_name: str, font_size: int,
         key = chapter_label or "_"
         fig_counter[key] = fig_counter.get(key, 0) + 1
         n = fig_counter[key]
-        caption = (f"Gambar {chapter_label}.{n}" if chapter_label
-                   else f"Gambar {n}")
-        if alt_text.strip():
-            caption += f" {alt_text.strip()}"
-
         if not p.exists():
             warn = doc.add_paragraph()
             warn.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -175,12 +214,115 @@ def md_to_doc(doc, md_text: str, font_name: str, font_size: int,
             run = pic_p.add_run()
             run.add_picture(str(p), width=IMG_WIDTH)
 
-        cap_p = doc.add_paragraph()
+        # Caption as a real Word caption: "Caption" style + a SEQ field so the
+        # DAFTAR GAMBAR (TOC \c "Gambar") can collect it. The field carries a
+        # cached result (n) so the number still shows before the field is
+        # updated. The chapter prefix keeps the "Gambar 3.x" numbering scheme.
+        try:
+            cap_p = doc.add_paragraph(style="Caption")
+        except KeyError:
+            cap_p = doc.add_paragraph()
         cap_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        cr = cap_p.add_run(caption)
-        cr.font.name = font_name
-        cr.font.size = Pt(font_size - 1)
         cap_p.paragraph_format.space_after = Pt(6)
+
+        def _cap_run(text):
+            rr = cap_p.add_run(text)
+            rr.italic = False
+            rr.font.name = font_name
+            rr.font.size = Pt(font_size - 1)
+            rr.font.color.rgb = BLACK
+            return rr
+
+        from docx.oxml.ns import qn as _qn
+        from docx.oxml import OxmlElement as _OE
+
+        _cap_run(f"Gambar {chapter_label}." if chapter_label else "Gambar ")
+
+        rb = cap_p.add_run()
+        _fb = _OE("w:fldChar"); _fb.set(_qn("w:fldCharType"), "begin")
+        rb._r.append(_fb)
+        ri = cap_p.add_run()
+        _it = _OE("w:instrText"); _it.set(_qn("xml:space"), "preserve")
+        _it.text = " SEQ Gambar \\* ARABIC "
+        ri._r.append(_it)
+        rs = cap_p.add_run()
+        _fs = _OE("w:fldChar"); _fs.set(_qn("w:fldCharType"), "separate")
+        rs._r.append(_fs)
+        _cap_run(str(n))
+        rE = cap_p.add_run()
+        _fe = _OE("w:fldChar"); _fe.set(_qn("w:fldCharType"), "end")
+        rE._r.append(_fe)
+
+        if alt_text.strip():
+            _cap_run(f" {alt_text.strip()}")
+
+    def add_table_caption(text):
+        # Mirror of the figure caption for tables: "Caption" style + a SEQ
+        # "Tabel" field so the DAFTAR TABEL (TOC \c "Tabel") can collect it.
+        # Rendered ABOVE the table (Indonesian academic convention).
+        key = f"Tabel:{chapter_label or '_'}"
+        fig_counter[key] = fig_counter.get(key, 0) + 1
+        n = fig_counter[key]
+        try:
+            cap_p = doc.add_paragraph(style="Caption")
+        except KeyError:
+            cap_p = doc.add_paragraph()
+        cap_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        cap_p.paragraph_format.space_before = Pt(6)
+        cap_p.paragraph_format.space_after = Pt(2)
+
+        def _tcr(t):
+            rr = cap_p.add_run(t)
+            rr.italic = False
+            rr.font.name = font_name
+            rr.font.size = Pt(font_size - 1)
+            rr.font.color.rgb = BLACK
+            return rr
+
+        from docx.oxml.ns import qn as _qn
+        from docx.oxml import OxmlElement as _OE
+
+        _tcr(f"Tabel {chapter_label}." if chapter_label else "Tabel ")
+        rb = cap_p.add_run()
+        _fb = _OE("w:fldChar"); _fb.set(_qn("w:fldCharType"), "begin")
+        rb._r.append(_fb)
+        ri = cap_p.add_run()
+        _it = _OE("w:instrText"); _it.set(_qn("xml:space"), "preserve")
+        _it.text = " SEQ Tabel \\* ARABIC "
+        ri._r.append(_it)
+        rs = cap_p.add_run()
+        _fs = _OE("w:fldChar"); _fs.set(_qn("w:fldCharType"), "separate")
+        rs._r.append(_fs)
+        _tcr(str(n))
+        rE = cap_p.add_run()
+        _fe = _OE("w:fldChar"); _fe.set(_qn("w:fldCharType"), "end")
+        rE._r.append(_fe)
+        if text.strip():
+            _tcr(f" {text.strip()}")
+        return n
+
+    def add_signature(sign_lines):
+        # Borderless 2-column, 1-row table: left cell empty, right cell holds
+        # the signature block (city/date, "Penulis,", blank lines for the wet
+        # signature, then the name). Positions the block on the right.
+        from docx.enum.table import WD_TABLE_ALIGNMENT
+        t = doc.add_table(rows=1, cols=2)
+        t.alignment = WD_TABLE_ALIGNMENT.RIGHT
+        t.allow_autofit = False
+        _no_borders(t)
+        left, right = t.rows[0].cells
+        left.width = Cm(9.0)
+        right.width = Cm(6.0)
+        first = True
+        for sl in sign_lines:
+            p = right.paragraphs[0] if first else right.add_paragraph()
+            first = False
+            p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            p.paragraph_format.space_after = Pt(0)
+            p.paragraph_format.line_spacing = 1.0
+            if sl.strip():
+                apply_inline(p, sl.strip(), font_name, font_size)
+        return t
 
     lines = md_text.splitlines()
     i = 0
@@ -189,6 +331,19 @@ def md_to_doc(doc, md_text: str, font_name: str, font_size: int,
 
         if not line.strip():
             i += 1
+            continue
+
+        # ── Signature block: [SIGN] ... [/SIGN] → borderless right-aligned
+        #    2-column table (left empty, right = signature lines; blank lines
+        #    inside become vertical space for the wet signature) ──
+        if line.strip() == "[SIGN]":
+            i += 1
+            sign_lines = []
+            while i < len(lines) and lines[i].strip() != "[/SIGN]":
+                sign_lines.append(lines[i].rstrip())
+                i += 1
+            i += 1  # skip the closing [/SIGN]
+            add_signature(sign_lines)
             continue
 
         # ── Image: ![caption](path) on its own line ──
@@ -212,7 +367,12 @@ def md_to_doc(doc, md_text: str, font_name: str, font_size: int,
             i += 1
             continue
         if line.startswith("# "):
-            add_heading(1, line[2:].strip())
+            title = line[2:].strip()
+            if chapter_label and chapter_label.isdigit():
+                add_chapter_heading(
+                    ROMAN.get(int(chapter_label), chapter_label), title)
+            else:
+                add_heading(1, title)
             i += 1
             continue
 
@@ -224,10 +384,27 @@ def md_to_doc(doc, md_text: str, font_name: str, font_size: int,
             continue
 
         # ── Numbered list ──
+        # Manual numbering from the markdown digits so each list restarts at 1
+        # instead of continuing one shared Word "List Number" counter across
+        # the whole document (which made Bab IV start at 45, 46, ...).
         num_m = re.match(r"^(\d+)\.\s+(.+)", line)
         if num_m:
-            p = doc.add_paragraph(style="List Number")
+            p = doc.add_paragraph()
+            p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+            p.paragraph_format.left_indent = Cm(0.75)
+            p.paragraph_format.first_line_indent = Cm(-0.75)
+            p.paragraph_format.space_after = Pt(0)
+            nr = p.add_run(f"{num_m.group(1)}.\t")
+            nr.font.name = font_name
+            nr.font.size = Pt(font_size)
             apply_inline(p, num_m.group(2).strip(), font_name, font_size)
+            i += 1
+            continue
+
+        # ── Table caption: "Tabel: ..." on its own line (above the table) ──
+        cap_m = re.match(r"^(?:Tabel|Table)\s*:\s*(.+)$", line)
+        if cap_m:
+            add_table_caption(cap_m.group(1).strip())
             i += 1
             continue
 
@@ -276,8 +453,17 @@ def md_to_doc(doc, md_text: str, font_name: str, font_size: int,
 
         # ── Regular paragraph ──
         p = doc.add_paragraph()
-        p.paragraph_format.first_line_indent = Cm(1.27)
-        p.paragraph_format.space_after = Pt(0)
+        if hanging_para:
+            # APA reference list: flush-left first line, hanging indent for the
+            # rest of each entry.
+            p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            p.paragraph_format.left_indent = Cm(1.27)
+            p.paragraph_format.first_line_indent = Cm(-1.27)
+            p.paragraph_format.space_after = Pt(6)
+        else:
+            p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+            p.paragraph_format.first_line_indent = Cm(1.27)
+            p.paragraph_format.space_after = Pt(0)
         apply_inline(p, line.strip(), font_name, font_size)
         i += 1
 
@@ -296,9 +482,13 @@ def parse_kv(md_text: str) -> dict:
 
 
 def scan_has_tables(sections_dir: Path) -> bool:
-    """Return True if any bab .md file in sections_dir contains a markdown table."""
+    """Return True if any bab .md has a CAPTIONED table, i.e. a line like
+    'Tabel: <caption>' (which becomes a SEQ-numbered caption). A plain pipe
+    table without a caption does not count, so the DAFTAR TABEL page only
+    appears when there is actually something to list."""
     for md in sections_dir.glob("bab*.md"):
-        if "|" in md.read_text(encoding="utf-8"):
+        if re.search(r"(?im)^\s*(?:Tabel|Table)\s*:\s*\S",
+                     md.read_text(encoding="utf-8")):
             return True
     return False
 
@@ -313,12 +503,18 @@ def scan_has_images(sections_dir: Path) -> bool:
 
 def _insert_toc_field(doc, font_name: str, font_size: int, title: str, toc_instruction: str):
     """Insert a section title (H1 style) and a Word TOC field paragraph."""
-    from docx.shared import Pt
+    from docx.shared import Pt, RGBColor
     from docx.enum.text import WD_ALIGN_PARAGRAPH
     from docx.oxml.ns import qn
     from docx.oxml import OxmlElement
 
-    title_p = doc.add_paragraph()
+    # Heading 1 style so these front-matter titles (DAFTAR ISI / TABEL /
+    # GAMBAR) are collected into the DAFTAR ISI just like KATA PENGANTAR and
+    # the BAB titles. Appearance overridden to the campus convention.
+    try:
+        title_p = doc.add_paragraph(style="Heading 1")
+    except KeyError:
+        title_p = doc.add_paragraph()
     title_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     title_p.paragraph_format.space_before = Pt(0)
     title_p.paragraph_format.space_after = Pt(12)
@@ -327,6 +523,7 @@ def _insert_toc_field(doc, font_name: str, font_size: int, title: str, toc_instr
     r.bold = True
     r.font.name = font_name
     r.font.size = Pt(14)
+    r.font.color.rgb = RGBColor(0, 0, 0)
 
     toc_p = doc.add_paragraph()
     toc_p.paragraph_format.space_after = Pt(0)
@@ -341,6 +538,20 @@ def _insert_toc_field(doc, font_name: str, font_size: int, title: str, toc_instr
     instr.set(qn("xml:space"), "preserve")
     instr.text = f" {toc_instruction} "
     run2._r.append(instr)
+
+    # 'separate' + a placeholder result makes the field well-formed, so Word
+    # and Google Docs recognise it as a TOC and regenerate it on open/update
+    # instead of leaving it blank.
+    run_sep = toc_p.add_run()
+    fc_sep = OxmlElement("w:fldChar")
+    fc_sep.set(qn("w:fldCharType"), "separate")
+    run_sep._r.append(fc_sep)
+
+    run_ph = toc_p.add_run("Perbarui field ini (klik kanan → Update Field) "
+                           "untuk menampilkan daftar beserta nomor halaman.")
+    run_ph.italic = True
+    run_ph.font.name = font_name
+    run_ph.font.size = Pt(font_size)
 
     run3 = toc_p.add_run()
     fc3 = OxmlElement("w:fldChar")
@@ -502,6 +713,48 @@ def render_cover(doc, fields: dict, config: dict):
     ])
 
 
+def _no_borders(table):
+    """Make all table borders invisible (0px / none) so the table is used only
+    for clean alignment, not as a visible grid."""
+    from docx.oxml.ns import qn
+    from docx.oxml import OxmlElement
+    tblPr = table._tbl.tblPr
+    for old in tblPr.findall(qn("w:tblBorders")):
+        tblPr.remove(old)
+    borders = OxmlElement("w:tblBorders")
+    for edge in ("top", "left", "bottom", "right", "insideH", "insideV"):
+        e = OxmlElement(f"w:{edge}")
+        e.set(qn("w:val"), "none")
+        e.set(qn("w:sz"), "0")
+        e.set(qn("w:space"), "0")
+        borders.append(e)
+    tblPr.append(borders)
+
+
+def _lp_kv_table(doc, font_name, font_size, rows):
+    """Borderless 3-column table (label | ':' | value) so the colons and values
+    line up regardless of label length (proportional fonts don't align with
+    space padding)."""
+    from docx.shared import Pt, Cm
+    from docx.enum.table import WD_TABLE_ALIGNMENT
+    t = doc.add_table(rows=len(rows), cols=3)
+    t.alignment = WD_TABLE_ALIGNMENT.CENTER
+    t.allow_autofit = False
+    _no_borders(t)
+    widths = [Cm(4.5), Cm(0.6), Cm(8.0)]
+    for ri, (label, val) in enumerate(rows):
+        for ci, txt in enumerate((label, ":", val)):
+            cell = t.rows[ri].cells[ci]
+            cell.width = widths[ci]
+            p = cell.paragraphs[0]
+            p.paragraph_format.space_after = Pt(2)
+            p.paragraph_format.line_spacing = 1.0
+            r = p.add_run(txt)
+            r.font.name = font_name
+            r.font.size = Pt(font_size)
+    return t
+
+
 def render_lembar_pengesahan(doc, fields: dict, config: dict):
     """Lembar Pengesahan per pedoman (Lampiran Contoh, hal. 14).
 
@@ -531,10 +784,10 @@ def render_lembar_pengesahan(doc, fields: dict, config: dict):
         (f"pada Program Studi {program}", 10, False),
     ])
     _gap(doc, 8)
-    _block(doc, font_name, [
-        (f"{'Dosen Pembimbing':<18}: {dosen}", font_size, False),
-        (f"{'Penyelia':<18}: {penyelia}", font_size, False),
-    ], align="left")
+    _lp_kv_table(doc, font_name, font_size, [
+        ("Dosen Pembimbing", dosen),
+        ("Penyelia", penyelia),
+    ])
     _gap(doc, 10)
     _block(doc, font_name, [
         ("Mengetahui,", font_size, False),
@@ -591,6 +844,21 @@ def compile_sections(sections_dir: Path, output_path: Path, config: dict) -> Pat
     # Passing a Length here would switch to EXACTLY mode and overflow.
     style.paragraph_format.line_spacing = spacing
 
+    # Force the built-in "Caption" style to black/upright document font. When
+    # LibreOffice/Word UPDATES a SEQ field, the regenerated number run takes
+    # the paragraph style's character formatting — the default Caption style is
+    # a blue-ish themed colour, which is why "Gambar 3.1" showed a blue "1".
+    from docx.shared import RGBColor as _RGB
+    try:
+        cap_style = doc.styles["Caption"]
+        cap_style.font.name = font_name
+        cap_style.font.size = Pt(font_size - 1)
+        cap_style.font.italic = False
+        cap_style.font.bold = True
+        cap_style.font.color.rgb = _RGB(0, 0, 0)
+    except KeyError:
+        pass
+
     # Collect sections in order
     all_md = {f.stem: f for f in sections_dir.glob("*.md")}
     ordered = []
@@ -599,8 +867,12 @@ def compile_sections(sections_dir: Path, output_path: Path, config: dict) -> Pat
             ordered.append((name, None))   # auto-generated, no .md needed
         elif name in all_md:
             ordered.append((name, all_md.pop(name)))
+    # Only auto-include extra chapter files (bab5, ...). Everything else left
+    # in the directory (logbook, lampiran, scratch drafts, PKS) is the
+    # author's own material and must NOT be compiled into the report.
     for name, path in sorted(all_md.items()):
-        ordered.append((name, path))
+        if re.fullmatch(r"bab\d+", name):
+            ordered.append((name, path))
 
     # Scan for conditional daftar sections
     has_tables = scan_has_tables(sections_dir)
@@ -668,7 +940,22 @@ def compile_sections(sections_dir: Path, output_path: Path, config: dict) -> Pat
                       base_dir=sections_dir,
                       chapter_label=chapter_label_for(name),
                       fig_counter=fig_counter,
-                      heading_sizes=heading_sizes)
+                      heading_sizes=heading_sizes,
+                      hanging_para=(name == "daftar-pustaka"))
+
+    # Normalize page size + margins across ALL sections. Section breaks
+    # inserted via _end_section create a sectPr without pgSz/pgMar, which
+    # Word renders at its Letter default; force every section to the
+    # configured page size (A4) and margins so the whole document matches.
+    from docx.enum.section import WD_ORIENT
+    for s in doc.sections:
+        s.orientation   = WD_ORIENT.PORTRAIT
+        s.page_width    = Cm(pw)
+        s.page_height   = Cm(ph)
+        s.left_margin   = Cm(margins["left"])
+        s.right_margin  = Cm(margins["right"])
+        s.top_margin    = Cm(margins["top"])
+        s.bottom_margin = Cm(margins["bottom"])
 
     # Configure page numbering footers per section.
     sects = doc.sections
@@ -679,15 +966,75 @@ def compile_sections(sections_dir: Path, output_path: Path, config: dict) -> Pat
     elif len(sects) == 1:
         _add_page_num_footer(sects[0], font_name, font_size)
 
+    # Ask the word processor to update all fields (TOC, SEQ captions, page
+    # numbers) when the document is opened, so DAFTAR ISI / TABEL / GAMBAR fill
+    # in automatically in Word and LibreOffice (and when exporting to PDF).
+    from docx.oxml.ns import qn as _qn
+    from docx.oxml import OxmlElement as _OE
+    _settings = doc.settings.element
+    _uf = _settings.find(_qn("w:updateFields"))
+    if _uf is None:
+        _uf = _OE("w:updateFields")
+        _settings.append(_uf)
+    _uf.set(_qn("w:val"), "true")
+
     output_path = versioned_path(output_path)
     doc.save(str(output_path))
     return output_path
+
+
+def _libreoffice_bin():
+    """Locate a LibreOffice binary for headless conversion, or None."""
+    import shutil
+    for cand in ("soffice", "libreoffice"):
+        found = shutil.which(cand)
+        if found:
+            return found
+    mac = Path("/Applications/LibreOffice.app/Contents/MacOS/soffice")
+    return str(mac) if mac.exists() else None
+
+
+def convert_with_libreoffice(docx_path: Path, fmt: str):
+    """Convert the .docx to `fmt` (e.g. 'pdf', 'odt') via headless LibreOffice.
+    LibreOffice updates fields on load (the doc requests it), so TOC and SEQ
+    captions are baked into the result. Returns the output Path or None."""
+    soffice = _libreoffice_bin()
+    if not soffice:
+        return None
+    import subprocess, tempfile, shutil
+    # Convert into a temp dir with NO spaces, then move the result next to the
+    # .docx. LibreOffice's store step can abort when the --outdir path contains
+    # spaces (e.g. ".../Berkas Magang Saya/"), so we avoid that entirely.
+    tmp_out = tempfile.mkdtemp(prefix="lo_out_")
+    profile = "file://" + tempfile.mkdtemp(prefix="lo_profile_")
+    ext = fmt.split(":")[0]
+    try:
+        subprocess.run(
+            [soffice, "--headless", f"-env:UserInstallation={profile}",
+             "--convert-to", fmt, "--outdir", tmp_out, str(docx_path)],
+            check=True, capture_output=True, timeout=180,
+        )
+    except Exception:
+        return None
+    produced = Path(tmp_out) / (docx_path.stem + "." + ext)
+    if not produced.exists():
+        return None
+    dest = docx_path.with_suffix("." + ext)
+    try:
+        shutil.move(str(produced), str(dest))
+    except Exception:
+        return None
+    return dest
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--sections-dir", required=True)
     parser.add_argument("--output",       required=True)
+    parser.add_argument("--also", default="odt",
+                        help="Comma list of extra formats via LibreOffice "
+                             "(e.g. 'odt' or 'odt,pdf'). Empty string to "
+                             "produce the .docx only.")
     args = parser.parse_args()
 
     sections_dir = Path(args.sections_dir).expanduser().resolve()
@@ -697,7 +1044,22 @@ def main():
 
     config     = load_config()
     out        = compile_sections(sections_dir, Path(args.output).expanduser(), config)
-    print(json.dumps({"success": True, "output": str(out)}))
+    result = {"success": True, "output": str(out)}
+
+    fmts = [f.strip() for f in args.also.split(",") if f.strip()]
+    if fmts:
+        if _libreoffice_bin():
+            also = {}
+            for fmt in fmts:
+                conv = convert_with_libreoffice(out, fmt)
+                if conv:
+                    also[fmt] = str(conv)
+            if also:
+                result["also"] = also
+        else:
+            result["also_note"] = ("LibreOffice tidak ditemukan; hanya .docx "
+                                   "yang dibuat.")
+    print(json.dumps(result))
 
 
 if __name__ == "__main__":
