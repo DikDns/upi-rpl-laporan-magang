@@ -4,11 +4,6 @@ Semua perubahan penting pada proyek ini dicatat di file ini.
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/),
 dan proyek ini memakai [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
-
-### Docs
-- README: dokumentasikan skill `laporan-bab-*` yang digenerate otomatis saat `init`, skill `laporan-compile`, dan `penilaian-penyelia`; perbaiki contoh alur kerja yang masih memakai sintaks lama (`laporan bab1` / `laporan compile`); tambah catatan output ODT/PDF, sitasi APA, dan dependensi LibreOffice opsional.
-
 ## [1.0.0-rc.1] — 2026-06-12
 
 Rilis perbaikan mesin compile laporan setelah uji pemakaian nyata (peran Test
@@ -32,6 +27,10 @@ letak A4 konsisten, sitasi APA, dan output multi-format.
 - **Numbered list** dirender manual dengan hanging indent dan **restart per list** (dulu satu counter global bikin Bab IV mulai dari angka besar).
 - **Paragraf justify**; **Daftar Pustaka** hanging indent (APA).
 - **Lembar Pengesahan & blok tanda tangan** memakai tabel borderless (label | `:` | value) — titik dua sejajar di font proporsional.
+
+### Docs
+- README: dokumentasikan skill `laporan-bab-*` yang digenerate otomatis saat `init`, skill `laporan-compile`, dan `penilaian-penyelia`; perbaiki contoh alur kerja yang masih memakai sintaks lama (`laporan bab1` / `laporan compile`); tambah catatan output ODT/PDF, sitasi APA, dan dependensi LibreOffice opsional.
+- `docs/KONVENSI_MARKDOWN.md`: referensi sintaks markdown engine untuk penulis.
 
 ## [1.0.0-beta.2] — 2026-06-01
 
