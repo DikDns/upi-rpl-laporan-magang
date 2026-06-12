@@ -6,6 +6,9 @@ dan proyek ini memakai [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Docs
+- README: dokumentasikan skill `laporan-bab-*` yang digenerate otomatis saat `init`, skill `laporan-compile`, dan `penilaian-penyelia`; perbaiki contoh alur kerja yang masih memakai sintaks lama (`laporan bab1` / `laporan compile`); tambah catatan output ODT/PDF, sitasi APA, dan dependensi LibreOffice opsional.
+
 ## [1.0.0-rc.1] — 2026-06-12
 
 Rilis perbaikan mesin compile laporan setelah uji pemakaian nyata (peran Test
