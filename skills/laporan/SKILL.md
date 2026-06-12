@@ -105,8 +105,9 @@ kaprodi_nip: [NIP]
 ```
 
 The DOCX engine automatically renders the full page: title (14pt), "Lembar Pengesahan" (12pt),
-"Diajukan sebagai salah satu syarat kegiatan MBKM..." (10pt), "Dosen Pembimbing :" and
-"Penyelia :" lines with names, "Mengetahui, Ketua Program Studi ...", and signature block.
+"Diajukan sebagai salah satu syarat kegiatan MBKM..." (10pt), the "Dosen Pembimbing" and
+"Penyelia" rows as a BORDERLESS alignment table (label | ':' | value, colons aligned),
+"Mengetahui, Ketua Program Studi ...", and signature block.
 Do NOT reproduce any of that content in the .md file — the engine owns the layout.
 
 ## Step 4 — KATA PENGANTAR
@@ -123,11 +124,40 @@ Then the formal opening-letter body:
 - Tujuan laporan
 - Terima kasih kepada: Kaprodi, Dosen Pembimbing, Penyelia, orang tua, rekan
 - Harapan penulis
-- Tanda tangan block (kota, tanggal, penulis)
+- Tanda tangan block — WRAP it in a `[SIGN] ... [/SIGN]` block so the engine
+  renders it as a borderless, right-positioned 2-column table (left empty,
+  right = the lines). Put blank lines where the wet signature goes:
+  ```
+  [SIGN]
+  [Kota], [Bulan Tahun]
+  Penulis,
+
+
+
+  [Nama Mahasiswa]
+  [/SIGN]
+  ```
 
 > Front-matter section titles (KATA PENGANTAR, DAFTAR ISI, DAFTAR PUSTAKA,
 > LAMPIRAN) always use `# ` (H1 → centered, bold, chapter size), same as
 > BAB titles. Never `##`.
+
+## Step 5 — DAFTAR PUSTAKA & in-text citations (APA)
+
+The pedoman uses APA (`config.formatting.citation_style`). Every external or
+factual claim — company facts/statistics, theory, methodology — MUST carry an
+in-text citation `(Penulis, Tahun)` in the relevant bab .md AND a matching
+entry in the reference list.
+
+Generate `daftar-pustaka.md`:
+- Start with `# DAFTAR PUSTAKA` (H1 → centered, appears in DAFTAR ISI).
+- One paragraph per source, sorted alphabetically by author, APA-7 format.
+  Italicise titles with `_..._`. The engine auto-applies a hanging indent to
+  this section (passes `hanging_para=True` for `daftar-pustaka`).
+- Keep sources real and verifiable; confirm year/edition with the student.
+
+When writing each bab, flag uncited factual claims and offer to add a
+`(Penulis, Tahun)` citation + a Daftar Pustaka entry.
 
 ## Step 9 — Confirm and suggest next step
 

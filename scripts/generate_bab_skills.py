@@ -107,6 +107,14 @@ Read `rpl_emphasis` from config. Before writing each sub-section, surface this r
 Then proceed with whatever the student chooses.
 </rpl-emphasis-rule>
 
+<citation-rule>
+Pedoman memakai sitasi APA (`config.formatting.citation_style`). Saat menulis,
+tandai setiap klaim faktual/eksternal (statistik perusahaan, teori, metodologi)
+yang belum ada sitasi, lalu tawarkan menambahkan sitasi in-text `(Penulis, Tahun)`
+di bab ini PLUS entri yang cocok di `daftar-pustaka.md`. Sumber harus nyata dan
+verifiable.
+</citation-rule>
+
 {image_rule}<steps>
 
 ## Step 1 — Cek config dan output dir
